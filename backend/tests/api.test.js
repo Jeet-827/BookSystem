@@ -1,3 +1,5 @@
+process.env.NODE_ENV = 'test';
+
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
@@ -7,12 +9,10 @@ import connectDB from '../config/db.js';
 
 describe('BookMart Customer Backend API Tests', () => {
   before(async () => {
-    // Connect to database before running tests
     await connectDB();
   });
 
   after(async () => {
-    // Close database connection after tests
     await mongoose.connection.close();
   });
 

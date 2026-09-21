@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import bookRoutes from './routes/bookRoutes.js';
@@ -75,29 +74,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-const isMainModule = process.argv[1] && (process.argv[1].endsWith('server.js') || process.argv[1].endsWith('nodemon'));
+const isRunningTests = process.env.NODE_ENV === 'test' || process.argv.some((arg) => arg.includes('test'));
 
-if (isMainModule) {
+if (!isRunningTests) {
   connectDB();
   const PORT = process.env.PORT || 5000;
-  const server = app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, '0.0.0.0', () => {
     logger.info(`Server running in ${process.env.NODE_ENV || 'development'} mode on http://127.0.0.1:${PORT}`);
   });
-
-  const handleShutdown = async (signal) => {
-    logger.info(`${signal} signal received: closing HTTP server and DB connections`);
-    if (server) {
-      server.close(() => {
-        logger.info('HTTP server closed.');
-      });
-    }
-    await mongoose.connection.close();
-    logger.info('MongoDB connection closed.');
-    process.exit(0);
-  };
-
-  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
-  process.on('SIGINT', () => handleShutdown('SIGINT'));
 }
 
 export default app;
