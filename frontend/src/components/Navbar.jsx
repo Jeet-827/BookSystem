@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   Package,
+  Shield,
 } from 'lucide-react';
 
 const Navbar = memo(() => {
@@ -109,6 +110,19 @@ const Navbar = memo(() => {
                   {orders.length}
                 </span>
               )}
+            </Link>
+
+            {/* Admin Portal Link */}
+            <Link
+              to="/admin"
+              className={`flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-colors ${
+                location.pathname.startsWith('/admin')
+                  ? 'bg-amber-400 text-black border-amber-400'
+                  : 'bg-white/5 border-gray-700 text-gray-300 hover:text-white hover:border-white'
+              }`}
+            >
+              <Shield size={14} className="text-amber-400" />
+              <span>Admin</span>
             </Link>
 
             {/* Cart Button */}
@@ -217,6 +231,15 @@ const Navbar = memo(() => {
                 {orders.length}
               </span>
             )}
+          </Link>
+
+          <Link
+            to="/admin"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center gap-2 text-sm font-bold py-2 text-amber-400 hover:text-amber-300"
+          >
+            <Shield size={18} />
+            <span>Admin Management Portal</span>
           </Link>
 
           <Link

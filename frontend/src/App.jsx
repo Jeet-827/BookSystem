@@ -17,6 +17,7 @@ const Cart = lazy(() => import('./pages/Cart'));
 const Orders = lazy(() => import('./pages/Orders'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 
 // Fallback Loading Component
 const PageSuspenseFallback = () => (
@@ -47,6 +48,7 @@ function App() {
               <Route path="/orders" element={<Orders />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               <Route
                 path="*"
                 element={
