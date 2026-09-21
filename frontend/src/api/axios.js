@@ -1,12 +1,12 @@
 import axios from 'axios';
 
-let inMemoryAccessToken = null;
+let token = null;
 
-export const setAccessToken = (token) => {
-  inMemoryAccessToken = token;
+export const setAccessToken = (t) => {
+  token = t;
 };
 
-export const getAccessToken = () => inMemoryAccessToken;
+export const getAccessToken = () => token;
 
 const api = axios.create({
   baseURL: '/api',
@@ -19,30 +19,30 @@ const api = axios.create({
 // Request interceptor: Attach Access Token if available
 api.interceptors.request.use(
   (config) => {
-    if (inMemoryAccessToken) {
-      config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: Silent Refresh when Access Token expires (LinkedIn-style)
+// Response interceptor: Silent Refresh when Access Token expires
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const request = error.config;
 
     // If 401 Unauthorized and not already retrying
-    if (error.response?.status === 401 && !originalRequest._retry && originalRequest.url !== '/auth/login' && originalRequest.url !== '/auth/refresh') {
-      originalRequest._retry = true;
+    if (error.response?.status === 401 && !request._retry && request.url !== '/auth/login' && request.url !== '/auth/refresh') {
+      request._retry = true;
       try {
         // Request new access token using HTTP-only refresh token cookie
         const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
         if (res.data?.accessToken) {
           setAccessToken(res.data.accessToken);
-          originalRequest.headers.Authorization = `Bearer ${res.data.accessToken}`;
-          return api(originalRequest);
+          request.headers.Authorization = `Bearer ${res.data.accessToken}`;
+          return api(request);
         }
       } catch (refreshErr) {
         setAccessToken(null);

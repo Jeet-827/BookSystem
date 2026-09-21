@@ -13,7 +13,7 @@ export const formatUser = (user) => {
 export const sanitizeEmail = (email) => {
   return String(email || '').toLowerCase().trim();
 };
-export const calculateDiscount = (originalPrice, price) => {
+export const getDiscount = (originalPrice, price) => {
   if (!originalPrice || originalPrice <= price) return 0;
   return Math.round(((originalPrice - price) / originalPrice) * 100);
 };

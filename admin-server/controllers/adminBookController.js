@@ -1,5 +1,5 @@
 import Book from '../models/Book.js';
-import { logAdminActivity } from '../utils/helpers.js';
+import { logAction } from '../utils/helpers.js';
 
 export const sampleBooks = [
   {
@@ -9,7 +9,7 @@ export const sampleBooks = [
       'A masterpiece of American literature set in the Jazz Age, exploring themes of wealth, class, love, and the American Dream through narrator Nick Carraway and Jay Gatsby.',
     price: 299,
     originalPrice: 499,
-    image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600',
+    image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400',
     downloadUrl: 'https://www.gutenberg.org/ebooks/64317.epub.images',
     fileFormat: 'EPUB',
     fileSize: '4.2 MB',
@@ -31,7 +31,7 @@ export const sampleBooks = [
       'An easy and proven way to build good habits and break bad ones. Tiny changes, remarkable results — James Clear distills the most fundamental principles of habit formation.',
     price: 449,
     originalPrice: 699,
-    image: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=600',
+    image: 'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400',
     downloadUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     fileFormat: 'PDF',
     fileSize: '5.8 MB',
@@ -53,7 +53,7 @@ export const sampleBooks = [
       'Even bad code can function, but if code isn\'t clean, it can bring a development team to its knees. Master clean code design principles with this foundational guide.',
     price: 899,
     originalPrice: 1299,
-    image: 'https://images.unsplash.com/photo-1532012164546-f432f2e3edd4?auto=format&fit=crop&q=80&w=600',
+    image: 'https://images.unsplash.com/photo-1532012164546-f432f2e3edd4?auto=format&fit=crop&q=80&w=400',
     downloadUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     fileFormat: 'PDF',
     fileSize: '8.4 MB',
@@ -75,7 +75,7 @@ export const sampleBooks = [
       'Groundbreaking narrative of humanity\'s creation and evolution that explores the ways in which biology and history have defined what it means to be human.',
     price: 549,
     originalPrice: 799,
-    image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600',
+    image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=400',
     downloadUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     fileFormat: 'PDF',
     fileSize: '6.1 MB',
@@ -97,7 +97,7 @@ export const sampleBooks = [
       'A timeless fable about following your dream. Santiago, an Andalusian shepherd boy, travels from Spain to Egypt in search of treasure buried near the Pyramids.',
     price: 249,
     originalPrice: 399,
-    image: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=600',
+    image: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400',
     downloadUrl: 'https://www.gutenberg.org/files/11/11-pdf.pdf',
     fileFormat: 'PDF',
     fileSize: '2.1 MB',
@@ -119,7 +119,7 @@ export const sampleBooks = [
       'Scrape away the bad features of JS to discover an elegant, lightweight, and highly expressive object-oriented language.',
     price: 599,
     originalPrice: 899,
-    image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=600',
+    image: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=400',
     downloadUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     fileFormat: 'PDF',
     fileSize: '3.6 MB',
@@ -136,9 +136,6 @@ export const sampleBooks = [
   },
 ];
 
-// @desc    Get all books with advanced filtering, sorting, pagination
-// @route   GET /api/admin/books
-// @access  Private (Admin)
 export const getAdminBooks = async (req, res) => {
   try {
     const {
@@ -185,56 +182,56 @@ export const getAdminBooks = async (req, res) => {
     }
 
     // 5. Price filter
-    const hasMin = minPrice !== undefined && minPrice !== '' && !isNaN(Number(minPrice));
-    const hasMax = maxPrice !== undefined && maxPrice !== '' && !isNaN(Number(maxPrice));
-    if (hasMin || hasMax) {
+    const isMinSet = minPrice !== undefined && minPrice !== '' && !isNaN(Number(minPrice));
+    const isMaxSet = maxPrice !== undefined && maxPrice !== '' && !isNaN(Number(maxPrice));
+    if (isMinSet || isMaxSet) {
       query.price = {};
-      if (hasMin) query.price.$gte = Number(minPrice);
-      if (hasMax) query.price.$lte = Number(maxPrice);
+      if (isMinSet) query.price.$gte = Number(minPrice);
+      if (isMaxSet) query.price.$lte = Number(maxPrice);
     }
 
     // 6. Sorting
-    let sortOption = { createdAt: -1 };
+    let sortBy = { createdAt: -1 };
     switch (sort) {
       case 'price_asc':
-        sortOption = { price: 1 };
+        sortBy = { price: 1 };
         break;
       case 'price_desc':
-        sortOption = { price: -1 };
+        sortBy = { price: -1 };
         break;
       case 'stock_asc':
-        sortOption = { stock: 1 };
+        sortBy = { stock: 1 };
         break;
       case 'stock_desc':
-        sortOption = { stock: -1 };
+        sortBy = { stock: -1 };
         break;
       case 'title_asc':
-        sortOption = { title: 1 };
+        sortBy = { title: 1 };
         break;
       case 'rating_desc':
-        sortOption = { rating: -1 };
+        sortBy = { rating: -1 };
         break;
       case 'oldest':
-        sortOption = { createdAt: 1 };
+        sortBy = { createdAt: 1 };
         break;
       default:
-        sortOption = { createdAt: -1 };
+        sortBy = { createdAt: -1 };
     }
 
     const pageNum = Math.max(1, Number(page) || 1);
-    const limitNum = Math.max(1, Number(limit) || 20);
-    const skip = (pageNum - 1) * limitNum;
+    const perPage = Math.max(1, Number(limit) || 20);
+    const skip = (pageNum - 1) * perPage;
 
     const [total, books] = await Promise.all([
       Book.countDocuments(query),
-      Book.find(query).sort(sortOption).skip(skip).limit(limitNum),
+      Book.find(query).sort(sortBy).skip(skip).limit(perPage),
     ]);
 
     res.json({
       success: true,
       books,
       currentPage: pageNum,
-      totalPages: Math.ceil(total / limitNum) || 1,
+      totalPages: Math.ceil(total / perPage) || 1,
       totalBooks: total,
     });
   } catch (error) {
@@ -294,7 +291,7 @@ export const createAdminBook = async (req, res) => {
       });
     }
 
-    const newBook = await Book.create({
+    const book = await Book.create({
       title: String(title).trim(),
       author: String(author).trim(),
       description: String(description).trim(),
@@ -316,19 +313,19 @@ export const createAdminBook = async (req, res) => {
       rating: rating ? Number(rating) : 4.0,
     });
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'CREATE_BOOK',
       targetType: 'Book',
-      targetId: newBook._id,
-      details: { title: newBook.title, category: newBook.category, price: newBook.price },
+      targetId: book._id,
+      details: { title: book.title, category: book.category, price: book.price },
       req,
     });
 
     res.status(201).json({
       success: true,
       message: 'Book created successfully',
-      book: newBook,
+      book,
     });
   } catch (error) {
     res.status(500).json({
@@ -348,21 +345,21 @@ export const updateAdminBook = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
 
-    const updatedBook = await Book.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true, runValidators: true });
+    const updated = await Book.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true, runValidators: true });
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'UPDATE_BOOK',
       targetType: 'Book',
-      targetId: updatedBook._id,
-      details: { title: updatedBook.title, changedFields: Object.keys(req.body) },
+      targetId: updated._id,
+      details: { title: updated.title, changedFields: Object.keys(req.body) },
       req,
     });
 
     res.json({
       success: true,
       message: 'Book updated successfully',
-      book: updatedBook,
+      book: updated,
     });
   } catch (error) {
     res.status(500).json({
@@ -384,7 +381,7 @@ export const deleteAdminBook = async (req, res) => {
 
     await Book.findByIdAndDelete(req.params.id);
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'DELETE_BOOK',
       targetType: 'Book',
@@ -420,7 +417,7 @@ export const bulkDeleteBooks = async (req, res) => {
 
     const result = await Book.deleteMany({ _id: { $in: ids } });
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'BULK_DELETE_BOOKS',
       targetType: 'Book',
@@ -454,7 +451,7 @@ export const toggleFeatured = async (req, res) => {
     book.isFeatured = !book.isFeatured;
     await book.save();
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'TOGGLE_FEATURED',
       targetType: 'Book',
@@ -487,7 +484,7 @@ export const toggleBestseller = async (req, res) => {
     book.isBestseller = !book.isBestseller;
     await book.save();
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'TOGGLE_BESTSELLER',
       targetType: 'Book',
@@ -527,7 +524,7 @@ export const updateStock = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'UPDATE_STOCK',
       targetType: 'Book',
@@ -554,7 +551,7 @@ export const seedAdminBooks = async (req, res) => {
     await Book.deleteMany({});
     const books = await Book.insertMany(sampleBooks);
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'RESET_SEED_BOOKS',
       targetType: 'Book',

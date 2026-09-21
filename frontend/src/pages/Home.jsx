@@ -118,15 +118,19 @@ const Home = () => {
               <div className="relative w-64 h-80">
                 <div className="absolute top-0 left-0 w-48 rounded-xl overflow-hidden shadow-2xl border-2 border-white/20 -rotate-6 transition-transform hover:rotate-0 duration-300">
                   <img
-                    src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600"
+                    src="https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400"
                     alt="Cover 1"
+                    width={400}
+                    height={533}
                     className="w-full h-64 object-cover"
                   />
                 </div>
                 <div className="absolute top-8 right-0 w-48 rounded-xl overflow-hidden shadow-2xl border-2 border-white/20 rotate-6 transition-transform hover:rotate-0 duration-300">
                   <img
-                    src="https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=600"
+                    src="https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&q=80&w=400"
                     alt="Cover 2"
+                    width={400}
+                    height={533}
                     className="w-full h-64 object-cover"
                   />
                 </div>

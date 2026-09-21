@@ -231,7 +231,7 @@ const AdminDashboard = () => {
       originalPrice: 599,
       category: 'Fiction',
       stock: 25,
-      image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600',
+      image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400',
       downloadUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
       fileFormat: 'PDF',
       fileSize: '4.2 MB',
@@ -665,7 +665,7 @@ const AdminDashboard = () => {
                         {/* Book Info */}
                         <td className="py-3.5 px-4 flex items-center gap-3">
                           <img
-                            src={book.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600'}
+                            src={book.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400'}
                             alt={book.title}
                             className="w-10 h-14 object-cover rounded shadow flex-shrink-0 bg-gray-800"
                           />

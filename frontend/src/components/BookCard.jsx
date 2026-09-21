@@ -44,12 +44,14 @@ const BookCard = memo(({ book }) => {
           )}
 
           <img
-            src={book.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600'}
+            src={book.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400'}
             alt={book.title}
+            width={400}
+            height={600}
             className="max-h-full max-w-full object-cover rounded shadow-md group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
             onError={(e) => {
-              e.target.src = 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600';
+              e.target.src = 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400';
             }}
           />
         </div>

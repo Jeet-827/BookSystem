@@ -106,11 +106,13 @@ const BookDetail = () => {
         <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-24">
           <div className="bg-slate-100 p-8 rounded-xl border border-gray-100 flex items-center justify-center min-h-[340px] sm:min-h-[420px]">
             <img
-              src={book.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600'}
+              src={book.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400'}
               alt={book.title}
+              width={400}
+              height={600}
               className="max-h-80 sm:max-h-96 w-auto object-cover rounded-md shadow-2xl"
               onError={(e) => {
-                e.target.src = 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600';
+                e.target.src = 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400';
               }}
             />
           </div>

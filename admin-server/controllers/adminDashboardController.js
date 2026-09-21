@@ -104,19 +104,19 @@ export const getActivityLogs = async (req, res) => {
     }
 
     const pageNum = Math.max(1, Number(page) || 1);
-    const limitNum = Math.max(1, Number(limit) || 20);
-    const skip = (pageNum - 1) * limitNum;
+    const perPage = Math.max(1, Number(limit) || 20);
+    const skip = (pageNum - 1) * perPage;
 
     const [total, logs] = await Promise.all([
       AdminLog.countDocuments(query),
-      AdminLog.find(query).sort({ createdAt: -1 }).skip(skip).limit(limitNum),
+      AdminLog.find(query).sort({ createdAt: -1 }).skip(skip).limit(perPage),
     ]);
 
     res.json({
       success: true,
       logs,
       currentPage: pageNum,
-      totalPages: Math.ceil(total / limitNum) || 1,
+      totalPages: Math.ceil(total / perPage) || 1,
       totalLogs: total,
     });
   } catch (error) {

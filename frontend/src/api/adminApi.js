@@ -1,22 +1,12 @@
 import axios from 'axios';
 
-let inMemoryAdminToken = null;
+let adminToken = null;
 
-export const setAdminToken = (token) => {
-  inMemoryAdminToken = token;
-  if (token) {
-    localStorage.setItem('bm_admin_token', token);
-  } else {
-    localStorage.removeItem('bm_admin_token');
-  }
+export const setAdminToken = (t) => {
+  adminToken = t;
 };
 
-export const getAdminToken = () => {
-  if (!inMemoryAdminToken) {
-    inMemoryAdminToken = localStorage.getItem('bm_admin_token');
-  }
-  return inMemoryAdminToken;
-};
+export const getAdminToken = () => adminToken;
 
 const adminApi = axios.create({
   baseURL: '/api/admin',
@@ -28,9 +18,9 @@ const adminApi = axios.create({
 
 adminApi.interceptors.request.use(
   (config) => {
-    const token = getAdminToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const t = getAdminToken();
+    if (t) {
+      config.headers.Authorization = `Bearer ${t}`;
     }
     return config;
   },
@@ -40,20 +30,20 @@ adminApi.interceptors.request.use(
 adminApi.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config;
+    const request = error.config;
     if (
       error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !originalRequest.url.includes('/auth/login') &&
-      !originalRequest.url.includes('/auth/refresh')
+      !request._retry &&
+      !request.url.includes('/auth/login') &&
+      !request.url.includes('/auth/refresh')
     ) {
-      originalRequest._retry = true;
+      request._retry = true;
       try {
         const res = await axios.post('/api/admin/auth/refresh', {}, { withCredentials: true });
         if (res.data?.accessToken) {
           setAdminToken(res.data.accessToken);
-          originalRequest.headers.Authorization = `Bearer ${res.data.accessToken}`;
-          return adminApi(originalRequest);
+          request.headers.Authorization = `Bearer ${res.data.accessToken}`;
+          return adminApi(request);
         }
       } catch (refreshErr) {
         setAdminToken(null);

@@ -143,7 +143,7 @@ const Orders = () => {
                   >
                     <div className="flex items-center gap-3.5">
                       <img
-                        src={item.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600'}
+                        src={item.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400'}
                         alt={item.title}
                         className="w-12 h-16 object-cover rounded shadow-sm flex-shrink-0"
                       />

@@ -3,15 +3,12 @@ import User from '../models/User.js';
 import {
   generateAccessToken,
   generateRefreshToken,
-  setTokenCookies,
-  clearTokenCookies,
-  REFRESH_TOKEN_SECRET,
+  setCookies,
+  clearCookies,
+  REFRESH_SECRET,
 } from '../utils/generateTokens.js';
 import { formatUser, sanitizeEmail } from '../utils/helpers.js';
 
-// @desc    Register a new user (multi-token with HTTP-only cookies)
-// @route   POST /api/auth/register
-// @access  Public
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -31,8 +28,7 @@ export const register = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
-    // Set secure HTTP-only cookies in browser
-    setTokenCookies(res, accessToken, refreshToken);
+    setCookies(res, accessToken, refreshToken);
 
     res.status(201).json({
       message: 'Account created',
@@ -44,9 +40,7 @@ export const register = async (req, res) => {
   }
 };
 
-// @desc    Login user (multi-token with HTTP-only cookies)
-// @route   POST /api/auth/login
-// @access  Public
+
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -65,8 +59,7 @@ export const login = async (req, res) => {
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
-    // Set secure HTTP-only cookies in browser
-    setTokenCookies(res, accessToken, refreshToken);
+    setCookies(res, accessToken, refreshToken);
 
     res.json({
       message: 'Login successful',
@@ -78,9 +71,6 @@ export const login = async (req, res) => {
   }
 };
 
-// @desc    Refresh access token using long-lived Refresh Token stored in HTTP-Only Cookie
-// @route   POST /api/auth/refresh
-// @access  Public (Requires refreshToken cookie)
 export const refreshToken = async (req, res) => {
   try {
     const token = req.cookies?.refreshToken;
@@ -90,11 +80,11 @@ export const refreshToken = async (req, res) => {
     }
 
     // Verify refresh token
-    const decoded = jwt.verify(token, REFRESH_TOKEN_SECRET);
+    const decoded = jwt.verify(token, REFRESH_SECRET);
     const user = await User.findById(decoded.id).select('-password');
 
     if (!user) {
-      clearTokenCookies(res);
+      clearCookies(res);
       return res.status(401).json({ message: 'User no longer exists' });
     }
 
@@ -102,14 +92,14 @@ export const refreshToken = async (req, res) => {
     const newAccessToken = generateAccessToken(user._id);
     const newRefreshToken = generateRefreshToken(user._id);
 
-    setTokenCookies(res, newAccessToken, newRefreshToken);
+    setCookies(res, newAccessToken, newRefreshToken);
 
     res.json({
       accessToken: newAccessToken,
       user: formatUser(user),
     });
   } catch (error) {
-    clearTokenCookies(res);
+    clearCookies(res);
     res.status(401).json({ message: 'Invalid or expired refresh token' });
   }
 };
@@ -118,7 +108,7 @@ export const refreshToken = async (req, res) => {
 // @route   POST /api/auth/logout
 // @access  Public
 export const logout = async (req, res) => {
-  clearTokenCookies(res);
+  clearCookies(res);
   res.json({ message: 'Logged out successfully' });
 };
 

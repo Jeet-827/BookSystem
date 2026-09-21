@@ -148,7 +148,7 @@ const Cart = () => {
                 >
                   <div className="flex items-center gap-3">
                     <img
-                      src={item.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600'}
+                      src={item.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400'}
                       alt={item.title}
                       className="w-10 h-14 object-cover rounded shadow-sm"
                     />
@@ -239,7 +239,7 @@ const Cart = () => {
               <div key={item._id} className="py-4 flex gap-3 sm:gap-4">
                 <Link to={`/books/${item._id}`} className="flex-shrink-0">
                   <img
-                    src={item.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=600'}
+                    src={item.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400'}
                     alt={item.title}
                     className="w-16 sm:w-20 h-24 sm:h-28 object-cover rounded shadow-sm"
                   />

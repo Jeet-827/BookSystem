@@ -3,11 +3,11 @@ import User from '../models/User.js';
 import {
   generateAccessToken,
   generateRefreshToken,
-  setTokenCookies,
-  clearTokenCookies,
-  REFRESH_TOKEN_SECRET,
+  setCookies,
+  clearCookies,
+  REFRESH_SECRET,
 } from '../utils/generateTokens.js';
-import { formatUser, sanitizeEmail, logAdminActivity } from '../utils/helpers.js';
+import { formatUser, sanitizeEmail, logAction } from '../utils/helpers.js';
 
 // @desc    Admin login (requires role: 'admin')
 // @route   POST /api/admin/auth/login
@@ -50,9 +50,9 @@ export const adminLogin = async (req, res) => {
     const accessToken = generateAccessToken(user._id, user.role);
     const refreshToken = generateRefreshToken(user._id, user.role);
 
-    setTokenCookies(res, accessToken, refreshToken);
+    setCookies(res, accessToken, refreshToken);
 
-    await logAdminActivity({
+    await logAction({
       admin: user,
       action: 'ADMIN_LOGIN',
       targetType: 'Auth',
@@ -88,11 +88,11 @@ export const adminRefreshToken = async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, REFRESH_TOKEN_SECRET);
+    const decoded = jwt.verify(token, REFRESH_SECRET);
     const user = await User.findById(decoded.id).select('-password');
 
     if (!user || user.role !== 'admin') {
-      clearTokenCookies(res);
+      clearCookies(res);
       return res.status(401).json({
         success: false,
         message: 'Admin session invalid or expired',
@@ -102,7 +102,7 @@ export const adminRefreshToken = async (req, res) => {
     const newAccessToken = generateAccessToken(user._id, user.role);
     const newRefreshToken = generateRefreshToken(user._id, user.role);
 
-    setTokenCookies(res, newAccessToken, newRefreshToken);
+    setCookies(res, newAccessToken, newRefreshToken);
 
     res.json({
       success: true,
@@ -110,7 +110,7 @@ export const adminRefreshToken = async (req, res) => {
       user: formatUser(user),
     });
   } catch (error) {
-    clearTokenCookies(res);
+    clearCookies(res);
     res.status(401).json({
       success: false,
       message: 'Invalid or expired refresh token',
@@ -122,7 +122,7 @@ export const adminRefreshToken = async (req, res) => {
 // @route   POST /api/admin/auth/logout
 // @access  Public
 export const adminLogout = async (req, res) => {
-  clearTokenCookies(res);
+  clearCookies(res);
   res.json({
     success: true,
     message: 'Admin logged out successfully',
@@ -144,10 +144,10 @@ export const getAdminProfile = async (req, res) => {
 // @access  Public (if no admins exist) / Private (Admin only)
 export const registerAdmin = async (req, res) => {
   try {
-    const adminCount = await User.countDocuments({ role: 'admin' });
+    const totalAdmins = await User.countDocuments({ role: 'admin' });
     
     // If admins already exist and requester is not authenticated as admin, deny
-    if (adminCount > 0) {
+    if (totalAdmins > 0) {
       // Check if authenticated
       if (!req.user || req.user.role !== 'admin') {
         return res.status(403).json({
@@ -174,24 +174,24 @@ export const registerAdmin = async (req, res) => {
       });
     }
 
-    const newAdmin = await User.create({
+    const admin = await User.create({
       name: String(name).trim(),
       email: safeEmail,
       password: String(password),
       role: 'admin',
     });
 
-    const accessToken = generateAccessToken(newAdmin._id, 'admin');
-    const refreshToken = generateRefreshToken(newAdmin._id, 'admin');
-    setTokenCookies(res, accessToken, refreshToken);
+    const accessToken = generateAccessToken(admin._id, 'admin');
+    const refreshToken = generateRefreshToken(admin._id, 'admin');
+    setCookies(res, accessToken, refreshToken);
 
     if (req.user) {
-      await logAdminActivity({
+      await logAction({
         admin: req.user,
         action: 'CREATE_ADMIN',
         targetType: 'User',
-        targetId: newAdmin._id,
-        details: { newAdminEmail: newAdmin.email },
+        targetId: admin._id,
+        details: { newAdminEmail: admin.email },
         req,
       });
     }
@@ -200,7 +200,7 @@ export const registerAdmin = async (req, res) => {
       success: true,
       message: 'Administrator account created successfully',
       accessToken,
-      user: formatUser(newAdmin),
+      user: formatUser(admin),
     });
   } catch (error) {
     res.status(500).json({

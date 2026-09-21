@@ -11,6 +11,10 @@ export default defineConfig(({ mode }) => {
       // Clear console.log and debugger statements from production client bundles
       drop: isProd ? ['console', 'debugger'] : [],
     },
+    // Force Vite to pre-bundle lucide-react in dev mode (tree-shakes 1MB → ~20KB)
+    optimizeDeps: {
+      include: ['lucide-react'],
+    },
     build: {
       target: 'esnext',
       sourcemap: false,

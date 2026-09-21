@@ -16,7 +16,7 @@ export const formatUser = (user) => {
   };
 };
 
-export const logAdminActivity = async ({ admin, action, targetType = 'System', targetId = null, details = {}, req = null }) => {
+export const logAction = async ({ admin, action, targetType = 'System', targetId = null, details = {}, req = null }) => {
   try {
     if (!admin) return;
     await AdminLog.create({

@@ -5,7 +5,7 @@ import { sampleBooks } from './controllers/bookController.js';
 
 dotenv.config();
 
-const runSeed = async () => {
+const seed = async () => {
   try {
     await connectDB();
     await Book.deleteMany({});
@@ -18,4 +18,4 @@ const runSeed = async () => {
   }
 };
 
-runSeed();
+seed();

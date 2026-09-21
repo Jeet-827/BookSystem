@@ -1,5 +1,5 @@
 import User from '../models/User.js';
-import { formatUser, sanitizeEmail, logAdminActivity } from '../utils/helpers.js';
+import { formatUser, sanitizeEmail, logAction } from '../utils/helpers.js';
 
 // @desc    Get all users with search, role filtering, pagination
 // @route   GET /api/admin/users
@@ -18,21 +18,21 @@ export const getAdminUsers = async (req, res) => {
       query.role = role;
     }
 
-    const sortOption = sort === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
+    const sortBy = sort === 'oldest' ? { createdAt: 1 } : { createdAt: -1 };
     const pageNum = Math.max(1, Number(page) || 1);
-    const limitNum = Math.max(1, Number(limit) || 20);
-    const skip = (pageNum - 1) * limitNum;
+    const perPage = Math.max(1, Number(limit) || 20);
+    const skip = (pageNum - 1) * perPage;
 
     const [total, users] = await Promise.all([
       User.countDocuments(query),
-      User.find(query).select('-password').sort(sortOption).skip(skip).limit(limitNum),
+      User.find(query).select('-password').sort(sortBy).skip(skip).limit(perPage),
     ]);
 
     res.json({
       success: true,
       users: users.map(formatUser),
       currentPage: pageNum,
-      totalPages: Math.ceil(total / limitNum) || 1,
+      totalPages: Math.ceil(total / perPage) || 1,
       totalUsers: total,
     });
   } catch (error) {
@@ -72,31 +72,31 @@ export const createAdminUser = async (req, res) => {
     }
 
     const safeEmail = sanitizeEmail(email);
-    const exists = await User.findOne({ email: safeEmail });
-    if (exists) {
+    const existing = await User.findOne({ email: safeEmail });
+    if (existing) {
       return res.status(409).json({ success: false, message: 'User with this email already exists' });
     }
 
-    const newUser = await User.create({
+    const user = await User.create({
       name: String(name).trim(),
       email: safeEmail,
       password: String(password),
       role: role === 'admin' ? 'admin' : 'user',
     });
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'ADMIN_CREATE_USER',
       targetType: 'User',
-      targetId: newUser._id,
-      details: { email: newUser.email, role: newUser.role },
+      targetId: user._id,
+      details: { email: user.email, role: user.role },
       req,
     });
 
     res.status(201).json({
       success: true,
       message: 'User created successfully',
-      user: formatUser(newUser),
+      user: formatUser(user),
     });
   } catch (error) {
     res.status(500).json({
@@ -116,13 +116,13 @@ export const updateUserRole = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Role must be either "user" or "admin"' });
     }
 
-    const targetUser = await User.findById(req.params.id);
-    if (!targetUser) {
+    const user = await User.findById(req.params.id);
+    if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     // Safety: Prevent demoting self if no other admins exist
-    if (String(req.admin._id) === String(targetUser._id) && role !== 'admin') {
+    if (String(req.admin._id) === String(user._id) && role !== 'admin') {
       const adminCount = await User.countDocuments({ role: 'admin' });
       if (adminCount <= 1) {
         return res.status(400).json({
@@ -132,23 +132,23 @@ export const updateUserRole = async (req, res) => {
       }
     }
 
-    const oldRole = targetUser.role;
-    targetUser.role = role;
-    await targetUser.save();
+    const oldRole = user.role;
+    user.role = role;
+    await user.save();
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'UPDATE_USER_ROLE',
       targetType: 'User',
-      targetId: targetUser._id,
-      details: { userEmail: targetUser.email, oldRole, newRole: role },
+      targetId: user._id,
+      details: { userEmail: user.email, oldRole, newRole: role },
       req,
     });
 
     res.json({
       success: true,
       message: `User role updated from ${oldRole} to ${role}`,
-      user: formatUser(targetUser),
+      user: formatUser(user),
     });
   } catch (error) {
     res.status(500).json({
@@ -163,13 +163,13 @@ export const updateUserRole = async (req, res) => {
 // @access  Private (Admin)
 export const deleteAdminUser = async (req, res) => {
   try {
-    const targetUser = await User.findById(req.params.id);
-    if (!targetUser) {
+    const user = await User.findById(req.params.id);
+    if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     // Safety: Prevent admin deleting their own account via user management
-    if (String(req.admin._id) === String(targetUser._id)) {
+    if (String(req.admin._id) === String(user._id)) {
       return res.status(400).json({
         success: false,
         message: 'You cannot delete your own active administrator account',
@@ -178,18 +178,18 @@ export const deleteAdminUser = async (req, res) => {
 
     await User.findByIdAndDelete(req.params.id);
 
-    await logAdminActivity({
+    await logAction({
       admin: req.admin,
       action: 'DELETE_USER',
       targetType: 'User',
       targetId: req.params.id,
-      details: { deletedEmail: targetUser.email, role: targetUser.role },
+      details: { deletedEmail: user.email, role: user.role },
       req,
     });
 
     res.json({
       success: true,
-      message: `User ${targetUser.email} deleted successfully`,
+      message: `User ${user.email} deleted successfully`,
     });
   } catch (error) {
     res.status(500).json({
