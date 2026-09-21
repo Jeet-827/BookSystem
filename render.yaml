@@ -1,0 +1,60 @@
+# ===================================================
+# Render.com Blueprint Infrastructure as Code (IaC)
+# BookMart Full Stack Application
+# ===================================================
+
+services:
+  # 1. Customer Frontend (Static Site)
+  - type: web
+    name: bookmart-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_APP_NAME
+        value: BookMart Plus
+
+  # 2. Customer Backend API (Web Service)
+  - type: web
+    name: bookmart-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        sync: false
+
+  # 3. Admin Management Server (Web Service)
+  - type: web
+    name: bookmart-admin-server
+    runtime: node
+    rootDir: admin-server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ADMIN_DEFAULT_EMAIL
+        value: admin@bookmart.com
+      - key: ADMIN_DEFAULT_PASSWORD
+        value: Admin@123456
