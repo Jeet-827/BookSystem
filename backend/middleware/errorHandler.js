@@ -4,12 +4,14 @@ import logger from '../utils/logger.js';
  * Centralized error handling middleware
  */
 export const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || res.statusCode === 200 ? 500 : res.statusCode;
+  const statusCode = err.statusCode || (res.statusCode !== 200 ? res.statusCode : 500);
   
-  logger.error(`[${req.method}] ${req.originalUrl} - ${err.message}`, {
-    stack: err.stack,
-    ip: req.ip,
-  });
+  logger.error(
+    `🚨 [API ERROR ${statusCode}] [${req.method}] ${req.originalUrl}\n` +
+    `   Message: ${err.message}\n` +
+    `   IP: ${req.ip || req.socket?.remoteAddress || 'unknown'}\n` +
+    `   Stack: ${err.stack || 'No stack trace'}`
+  );
 
   const isProd = process.env.NODE_ENV === 'production';
 

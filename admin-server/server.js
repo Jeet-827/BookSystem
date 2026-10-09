@@ -146,8 +146,13 @@ app.use((req, res) => {
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-  logger.error(`Admin Server Error: ${err.message}`, err.stack);
-  res.status(err.status || 500).json({
+  const status = err.status || (res.statusCode !== 200 ? res.statusCode : 500);
+  logger.error(
+    `🚨 [ADMIN ERROR ${status}] [${req.method}] ${req.originalUrl}\n` +
+    `   Message: ${err.message}\n` +
+    `   Stack: ${err.stack || 'No stack trace'}`
+  );
+  res.status(status).json({
     success: false,
     message: err.message || 'Internal Admin Server error',
   });

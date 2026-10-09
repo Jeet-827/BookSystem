@@ -57,6 +57,16 @@ adminApi.interceptors.response.use(
         return Promise.reject(refreshErr);
       }
     }
+
+    const status = error.response?.status;
+    const method = error.config?.method?.toUpperCase() || 'REQUEST';
+    const url = error.config?.url || '';
+    const errorMsg = error.response?.data?.message || error.message;
+
+    if (!(status === 401 && url.includes('/auth/refresh'))) {
+      console.error(`🚨 [Admin API Error ${status || 'Network'}] [${method} ${url}]:`, errorMsg);
+    }
+
     return Promise.reject(error);
   }
 );
