@@ -27,7 +27,24 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Response interceptor for automatic token refresh & HTML response validation
+export const getAdminServerBase = () => {
+  const adminUrl = import.meta.env.VITE_ADMIN_API_BASE_URL || 'https://booksystem-1.onrender.com/';
+  let clean = adminUrl.trim().replace(/\/+$/, '');
+  if (clean.endsWith('/api/admin')) return clean.replace(/\/admin$/, '');
+  if (clean.endsWith('/api')) return clean;
+  return `${clean}/api`;
+};
+
+// Request interceptor: Route admin requests to dedicated admin backend
+api.interceptors.request.use(
+  (config) => {
+    if (config.url?.startsWith('/admin')) {
+      config.baseURL = getAdminServerBase();
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 api.interceptors.response.use(
   (response) => {
     if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE html')) {

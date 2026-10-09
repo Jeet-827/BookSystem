@@ -34,6 +34,11 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 5173,
       proxy: {
+        '/api/admin': {
+          target: process.env.VITE_ADMIN_TARGET || 'https://booksystem-1.onrender.com',
+          changeOrigin: true,
+          secure: false,
+        },
         '/api': {
           target: process.env.VITE_BACKEND_TARGET || 'https://booksystem-wz8g.onrender.com',
           changeOrigin: true,

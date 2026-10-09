@@ -123,6 +123,19 @@ app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/admin/system', adminSystemRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    status: 'OK',
+    server: 'BookMart Admin Dedicated Server',
+    api: '/api/admin',
+    health: '/api/health',
+    adminHealth: '/api/admin/health',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Health Check Endpoints
 app.get('/api/health', (req, res) => {
   res.json({

@@ -35,9 +35,20 @@ const api = axios.create({
   withCredentials: true, // Automatically sends and receives HTTP-Only cookies
 });
 
-// Request interceptor: Attach Access Token if available
+export const getAdminServerBase = () => {
+  const adminUrl = import.meta.env.VITE_ADMIN_API_BASE_URL || 'https://booksystem-1.onrender.com/';
+  let clean = adminUrl.trim().replace(/\/+$/, '');
+  if (clean.endsWith('/api/admin')) return clean.replace(/\/admin$/, '');
+  if (clean.endsWith('/api')) return clean;
+  return `${clean}/api`;
+};
+
+// Request interceptor: Attach Access Token & Route admin requests to dedicated admin backend
 api.interceptors.request.use(
   (config) => {
+    if (config.url?.startsWith('/admin')) {
+      config.baseURL = getAdminServerBase();
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
