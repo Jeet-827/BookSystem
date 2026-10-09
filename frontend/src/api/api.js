@@ -1,14 +1,20 @@
 import axios from 'axios';
 
-const getApiBaseURL = () => {
+export const normalizeApiUrl = (url) => {
+  if (!url) return '';
+  let clean = url.trim().replace(/\/+$/, '');
+  if (!clean.endsWith('/api') && clean !== '/api') {
+    clean = `${clean}/api`;
+  }
+  return clean;
+};
+
+export const getApiBaseURL = () => {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
-  if (envUrl && envUrl !== '/api') {
-    return envUrl.replace(/\/+$/, '');
+  if (envUrl) {
+    return normalizeApiUrl(envUrl);
   }
-  if (import.meta.env.PROD) {
-    return 'https://booksystem-wz8g.onrender.com/api';
-  }
-  return '/api';
+  return 'https://booksystem-wz8g.onrender.com/api';
 };
 
 const apiBaseURL = getApiBaseURL();

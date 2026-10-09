@@ -8,12 +8,23 @@ export const setAdminToken = (t) => {
 
 export const getAdminToken = () => adminToken;
 
+const normalizeApiUrl = (url) => {
+  if (!url) return '';
+  let clean = url.trim().replace(/\/+$/, '');
+  if (!clean.endsWith('/api') && clean !== '/api') {
+    clean = `${clean}/api`;
+  }
+  return clean;
+};
+
 const getAdminBaseURL = () => {
   if (import.meta.env.VITE_ADMIN_API_BASE_URL) return import.meta.env.VITE_ADMIN_API_BASE_URL.replace(/\/+$/, '');
   const envUrl = import.meta.env.VITE_API_BASE_URL;
-  if (envUrl && envUrl !== '/api') return `${envUrl.replace(/\/+$/, '')}/admin`;
-  if (import.meta.env.PROD) return 'https://booksystem-wz8g.onrender.com/api/admin';
-  return '/api/admin';
+  if (envUrl) {
+    const base = normalizeApiUrl(envUrl);
+    return base === '/api' ? '/api/admin' : `${base}/admin`;
+  }
+  return 'https://booksystem-wz8g.onrender.com/api/admin';
 };
 
 const adminApi = axios.create({

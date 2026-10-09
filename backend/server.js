@@ -132,6 +132,18 @@ app.use('/api/admin/dashboard', adminDashboardRoutes);
 app.use('/api/admin/system', adminSystemRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'BookMart Unified API Server is Live & Running!',
+    api: '/api',
+    health: '/api/health',
+    books: '/api/books',
+    posters: '/api/posters',
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
