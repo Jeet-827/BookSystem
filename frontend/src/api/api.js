@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getAccessToken } from './axios';
 
 export const normalizeApiUrl = (url) => {
   if (!url) return '';
@@ -35,11 +36,15 @@ export const getAdminServerBase = () => {
   return `${clean}/api`;
 };
 
-// Request interceptor: Route admin requests to dedicated admin backend
+// Request interceptor: Route admin requests to dedicated admin backend & attach token
 api.interceptors.request.use(
   (config) => {
     if (config.url?.startsWith('/admin')) {
       config.baseURL = getAdminServerBase();
+    }
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },

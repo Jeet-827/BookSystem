@@ -105,9 +105,10 @@ This guide provides step-by-step instructions to deploy the BookMart full-stack 
    - **Output Directory**: `dist`
    - **Install Command**: `npm install`
 5. Expand **Environment Variables** and add:
-   | Key | Value |
-   | :--- | :--- |
-   | `VITE_API_BASE_URL` | `https://bookmart-backend.onrender.com/api` *(Your Render backend URL from Step 2 + /api)* |
+   | Key | Value | Description |
+   | :--- | :--- | :--- |
+   | `VITE_API_BASE_URL` | `https://booksystem-wz8g.onrender.com/api` | Main Customer backend API |
+   | `VITE_ADMIN_API_BASE_URL` | `https://booksystem-1.onrender.com/` | Dedicated Admin backend server |
 6. Click **Deploy**.
 7. Vercel will build the frontend and provide your production URL (e.g., `https://bookmart-xyz.vercel.app`).
 8. Notice that client-side routes like `/books`, `/checkout`, `/orders`, and `/admin` work on page refresh thanks to [`frontend/vercel.json`](./frontend/vercel.json).
