@@ -48,6 +48,7 @@ const allowedOrigins = [
   'http://127.0.0.1:3000',
   'http://localhost:5001',
   'http://127.0.0.1:5001',
+  'https://book-system-qayqhfxf5-jeet-827s-projects.vercel.app',
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
