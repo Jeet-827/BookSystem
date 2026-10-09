@@ -1,16 +1,26 @@
 import axios from 'axios';
 
+const rawBaseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+const apiBaseURL = rawBaseURL.replace(/\/+$/, '');
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: apiBaseURL,
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true,
 });
 
-// Response interceptor for automatic token refresh
+// Response interceptor for automatic token refresh & HTML response validation
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (typeof response.data === 'string' && response.data.trim().startsWith('<!DOCTYPE html')) {
+      const msg = `Endpoint [${response.config.url}] returned HTML instead of API data. Ensure VITE_API_BASE_URL is set in Vercel to your Render backend URL!`;
+      console.error('🚨 [Vercel API Config Error]:', msg);
+      return Promise.reject(new Error(msg));
+    }
+    return response;
+  },
   async (error) => {
     const request = error.config;
     if (
