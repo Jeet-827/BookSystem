@@ -59,7 +59,7 @@ api.interceptors.response.use(
       request._retry = true;
       try {
         // Request new access token using HTTP-only refresh token cookie
-        const baseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+        const baseURL = getApiBaseURL();
         const res = await axios.post(`${baseURL}/auth/refresh`, {}, { withCredentials: true });
         if (res.data?.accessToken) {
           setAccessToken(res.data.accessToken);
@@ -78,7 +78,8 @@ api.interceptors.response.use(
     const url = error.config?.url || '';
     const errorMsg = error.response?.data?.message || error.message;
 
-    if (!(status === 401 && url.includes('/auth/refresh'))) {
+    // Suppress expected 401s or failed probes on /auth/refresh for unauthenticated visitors
+    if (!url.includes('/auth/refresh')) {
       console.error(`🚨 [API Error ${status || 'Network'}] [${method} ${url}]:`, errorMsg);
     }
 

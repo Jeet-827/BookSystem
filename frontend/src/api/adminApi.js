@@ -65,7 +65,8 @@ adminApi.interceptors.response.use(
     const url = error.config?.url || '';
     const errorMsg = error.response?.data?.message || error.message;
 
-    if (!(status === 401 && url.includes('/auth/refresh'))) {
+    // Suppress expected 401s or failed probes on /auth/refresh for unauthenticated visitors
+    if (!url.includes('/auth/refresh')) {
       console.error(`🚨 [Admin API Error ${status || 'Network'}] [${method} ${url}]:`, errorMsg);
     }
 

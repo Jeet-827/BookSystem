@@ -42,7 +42,7 @@ api.interceptors.response.use(
       request._retry = true;
       try {
         await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL || '/api'}/auth/refresh`,
+          `${getApiBaseURL()}/auth/refresh`,
           {},
           { withCredentials: true }
         );
@@ -57,7 +57,8 @@ api.interceptors.response.use(
     const url = error.config?.url || '';
     const errorMsg = error.response?.data?.message || error.message;
 
-    if (!(status === 401 && url.includes('/auth/refresh'))) {
+    // Suppress expected 401s or failed probes on /auth/refresh for unauthenticated visitors
+    if (!url.includes('/auth/refresh')) {
       console.error(`🚨 [API Error ${status || 'Network'}] [${method} ${url}]:`, errorMsg);
     }
 

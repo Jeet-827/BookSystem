@@ -16,7 +16,9 @@ const renderWithStore = (component, { preloadedState } = {}) => {
   return {
     ...render(
       <Provider store={store}>
-        <MemoryRouter>{component}</MemoryRouter>
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          {component}
+        </MemoryRouter>
       </Provider>
     ),
     store,

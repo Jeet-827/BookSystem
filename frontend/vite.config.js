@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         '/api': {
-          target: 'http://127.0.0.1:5000',
+          target: process.env.VITE_BACKEND_TARGET || 'https://booksystem-wz8g.onrender.com',
           changeOrigin: true,
           secure: false,
         },

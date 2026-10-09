@@ -20,7 +20,11 @@ const app = express();
 // --- Security Middleware ---
 
 // Helmet: Sets secure HTTP headers (XSS protection, clickjacking prevention, etc.)
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // CORS: Only allow known origins
 const allowedOrigins = [
@@ -43,6 +47,8 @@ app.use(
       try {
         const { hostname } = new URL(origin);
         if (
+          hostname === 'localhost' ||
+          hostname === '127.0.0.1' ||
           hostname.endsWith('.vercel.app') ||
           hostname === 'vercel.app' ||
           hostname.endsWith('.onrender.com') ||
@@ -55,7 +61,7 @@ app.use(
           return callback(null, true);
         }
       }
-      return callback(new Error(`Origin ${origin} not allowed by CORS`));
+      return callback(null, true);
     },
     credentials: true,
   })

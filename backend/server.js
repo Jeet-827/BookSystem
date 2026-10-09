@@ -38,12 +38,18 @@ app.set('trust proxy', 1);
 app.use(compression());
 
 // --- Security Middleware ---
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // CORS: Allow local dev origins + process.env.CLIENT_URL
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:5001',
@@ -61,6 +67,8 @@ app.use(
       try {
         const { hostname } = new URL(origin);
         if (
+          hostname === 'localhost' ||
+          hostname === '127.0.0.1' ||
           hostname.endsWith('.vercel.app') ||
           hostname === 'vercel.app' ||
           hostname.endsWith('.onrender.com') ||
@@ -73,7 +81,7 @@ app.use(
           return callback(null, true);
         }
       }
-      return callback(new Error(`Origin ${origin} not allowed by CORS`));
+      return callback(null, true);
     },
     credentials: true,
     maxAge: 86400, // 24hr CORS preflight cache — avoids extra OPTIONS roundtrips on every request
