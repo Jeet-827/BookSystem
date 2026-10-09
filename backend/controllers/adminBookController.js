@@ -2,6 +2,7 @@ import Book from '../models/Book.js';
 import { sampleBooks } from '../data/sampleBooks.js';
 import { logAction } from '../utils/helpers.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import cache from '../utils/cache.js';
 
 // @desc    Get all books with advanced filtering, search, sorting & pagination
 // @route   GET /api/admin/books
@@ -136,6 +137,8 @@ export const createAdminBook = asyncHandler(async (req, res) => {
     req,
   });
 
+  cache.clear();
+
   res.status(201).json({
     success: true,
     message: 'Book created successfully',
@@ -194,6 +197,8 @@ export const updateAdminBook = asyncHandler(async (req, res) => {
     req,
   });
 
+  cache.clear();
+
   res.json({
     success: true,
     message: 'Book updated successfully',
@@ -218,6 +223,8 @@ export const deleteAdminBook = asyncHandler(async (req, res) => {
     details: { title: book.title },
     req,
   });
+
+  cache.clear();
 
   res.json({
     success: true,
@@ -246,6 +253,8 @@ export const bulkDeleteBooks = asyncHandler(async (req, res) => {
     req,
   });
 
+  cache.clear();
+
   res.json({
     success: true,
     message: `Successfully deleted ${result.deletedCount} books`,
@@ -271,6 +280,8 @@ export const toggleFeatured = asyncHandler(async (req, res) => {
     details: { title: book.title, isFeatured: book.isFeatured },
     req,
   });
+
+  cache.clear();
 
   res.json({
     success: true,
@@ -298,6 +309,8 @@ export const toggleBestseller = asyncHandler(async (req, res) => {
     details: { title: book.title, isBestseller: book.isBestseller },
     req,
   });
+
+  cache.clear();
 
   res.json({
     success: true,
@@ -333,6 +346,8 @@ export const updateStock = asyncHandler(async (req, res) => {
     req,
   });
 
+  cache.clear();
+
   res.json({
     success: true,
     message: `Stock updated to ${book.stock}`,
@@ -353,6 +368,8 @@ export const seedAdminBooks = asyncHandler(async (req, res) => {
     details: { seededCount: books.length },
     req,
   });
+
+  cache.clear();
 
   res.status(201).json({
     success: true,

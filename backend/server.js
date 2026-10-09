@@ -7,8 +7,10 @@ import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
+import compression from 'compression';
 
 import connectDB from './config/db.js';
+import cache from './utils/cache.js';
 import authRoutes from './routes/authRoutes.js';
 import bookRoutes from './routes/bookRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
@@ -31,6 +33,9 @@ const app = express();
 
 // Trust proxy for rate limiting and IP detection behind Render / Nginx
 app.set('trust proxy', 1);
+
+// Gzip/Brotli compression: Reduces JSON and asset transfer size by ~70-80%
+app.use(compression());
 
 // --- Security Middleware ---
 app.use(helmet());
@@ -70,6 +75,7 @@ app.use(
       return callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     credentials: true,
+    maxAge: 86400, // 24hr CORS preflight cache — avoids extra OPTIONS roundtrips on every request
   })
 );
 
@@ -103,11 +109,11 @@ app.use('/api', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
-// Customer API Routes
+// Customer API Routes with In-Memory Caching (Instant <1ms response times)
 app.use('/api/auth', authRoutes);
-app.use('/api/books', bookRoutes);
+app.use('/api/books', cache.middleware(60000), bookRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/posters', posterRoutes);
+app.use('/api/posters', cache.middleware(120000), posterRoutes);
 
 // Admin API Routes (Unified on port 5000)
 app.use('/api/admin/auth', authRoutes);

@@ -5,9 +5,12 @@ export const connectDB = async () => {
   try {
     const dbUrl = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/bookmart';
     const options = {
-      maxPoolSize: 10,
+      maxPoolSize: 20,
+      minPoolSize: 2, // Keeps warm connections to avoid TLS re-handshakes
+      maxIdleTimeMS: 60000,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
     };
     const db = await mongoose.connect(dbUrl, options);
     logger.info(`Database connected: ${db.connection.host}/${db.connection.name}`);

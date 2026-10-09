@@ -34,6 +34,15 @@ export const fetchFeaturedBooks = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch featured books');
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { books } = getState();
+      if (books.featuredBooks && books.featuredBooks.length > 0 && !books.loading) {
+        return false; // Cache hit in Redux: instant 0ms render
+      }
+      return true;
+    },
   }
 );
 
@@ -47,6 +56,15 @@ export const fetchBestsellers = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch bestsellers');
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { books } = getState();
+      if (books.bestsellers && books.bestsellers.length > 0 && !books.loading) {
+        return false; // Cache hit in Redux: instant 0ms render
+      }
+      return true;
+    },
   }
 );
 

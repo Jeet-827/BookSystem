@@ -114,5 +114,11 @@ bookSchema.virtual('discountPercent').get(function () {
 bookSchema.set('toJSON', { virtuals: true });
 bookSchema.set('toObject', { virtuals: true });
 
+// High-speed database indexes
+bookSchema.index({ isFeatured: 1, createdAt: -1 });
+bookSchema.index({ isBestseller: 1, createdAt: -1 });
+bookSchema.index({ category: 1, price: 1 });
+bookSchema.index({ title: 'text', author: 'text' });
+
 const Book = mongoose.model('Book', bookSchema);
 export default Book;

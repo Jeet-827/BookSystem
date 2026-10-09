@@ -6,12 +6,6 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 // @route   GET /api/books
 // @access  Public
 export const getAllBooks = asyncHandler(async (req, res) => {
-  // Auto-populate initial catalog if database is empty
-  const count = await Book.countDocuments();
-  if (count === 0) {
-    await Book.insertMany(sampleBooks);
-  }
-
   const { search, category, minPrice, maxPrice, sort, page = 1, limit = 12 } = req.query;
   const query = {};
 
@@ -91,10 +85,6 @@ export const getBookById = asyncHandler(async (req, res) => {
 // @route   GET /api/books/featured
 // @access  Public
 export const getFeaturedBooks = asyncHandler(async (req, res) => {
-  const count = await Book.countDocuments();
-  if (count === 0) {
-    await Book.insertMany(sampleBooks);
-  }
   const books = await Book.find({ isFeatured: true }).select('-downloadUrl').limit(8).lean();
   res.json({ success: true, books });
 });
@@ -103,10 +93,6 @@ export const getFeaturedBooks = asyncHandler(async (req, res) => {
 // @route   GET /api/books/bestsellers
 // @access  Public
 export const getBestsellers = asyncHandler(async (req, res) => {
-  const count = await Book.countDocuments();
-  if (count === 0) {
-    await Book.insertMany(sampleBooks);
-  }
   const books = await Book.find({ isBestseller: true }).select('-downloadUrl').limit(8).lean();
   res.json({ success: true, books });
 });
