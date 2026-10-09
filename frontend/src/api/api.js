@@ -1,7 +1,17 @@
 import axios from 'axios';
 
-const rawBaseURL = import.meta.env.VITE_API_BASE_URL || '/api';
-const apiBaseURL = rawBaseURL.replace(/\/+$/, '');
+const getApiBaseURL = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl && envUrl !== '/api') {
+    return envUrl.replace(/\/+$/, '');
+  }
+  if (import.meta.env.PROD) {
+    return 'https://booksystem-wz8g.onrender.com/api';
+  }
+  return '/api';
+};
+
+const apiBaseURL = getApiBaseURL();
 
 const api = axios.create({
   baseURL: apiBaseURL,

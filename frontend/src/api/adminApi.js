@@ -9,8 +9,10 @@ export const setAdminToken = (t) => {
 export const getAdminToken = () => adminToken;
 
 const getAdminBaseURL = () => {
-  if (import.meta.env.VITE_ADMIN_API_BASE_URL) return import.meta.env.VITE_ADMIN_API_BASE_URL;
-  if (import.meta.env.VITE_API_BASE_URL) return `${import.meta.env.VITE_API_BASE_URL}/admin`;
+  if (import.meta.env.VITE_ADMIN_API_BASE_URL) return import.meta.env.VITE_ADMIN_API_BASE_URL.replace(/\/+$/, '');
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl && envUrl !== '/api') return `${envUrl.replace(/\/+$/, '')}/admin`;
+  if (import.meta.env.PROD) return 'https://booksystem-wz8g.onrender.com/api/admin';
   return '/api/admin';
 };
 

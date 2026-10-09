@@ -8,8 +8,19 @@ export const setAccessToken = (t) => {
 
 export const getAccessToken = () => token;
 
-const rawBaseURL = import.meta.env.VITE_API_BASE_URL || '/api';
-const apiBaseURL = rawBaseURL.replace(/\/+$/, '');
+const getApiBaseURL = () => {
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl && envUrl !== '/api') {
+    return envUrl.replace(/\/+$/, '');
+  }
+  // In production (Vercel), default to the live Render backend
+  if (import.meta.env.PROD) {
+    return 'https://booksystem-wz8g.onrender.com/api';
+  }
+  return '/api';
+};
+
+const apiBaseURL = getApiBaseURL();
 
 const api = axios.create({
   baseURL: apiBaseURL,
