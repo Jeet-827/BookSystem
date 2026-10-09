@@ -17,6 +17,12 @@ import adminUserRoutes from './routes/adminUserRoutes.js';
 import adminDashboardRoutes from './routes/adminDashboardRoutes.js';
 import adminSystemRoutes from './routes/adminSystemRoutes.js';
 import adminOrderRoutes from './routes/adminOrderRoutes.js';
+import posterRoutes from './routes/posterRoutes.js';
+
+import Book from './models/Book.js';
+import Poster from './models/Poster.js';
+import { sampleBooks } from './data/sampleBooks.js';
+import { samplePosters } from './data/samplePosters.js';
 
 import { errorHandler } from './middleware/errorHandler.js';
 import logger from './utils/logger.js';
@@ -101,6 +107,7 @@ app.use('/api/auth/register', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/books', bookRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/posters', posterRoutes);
 
 // Admin API Routes (Unified on port 5000)
 app.use('/api/admin/auth', authRoutes);
@@ -134,7 +141,22 @@ const isTesting = process.env.NODE_ENV === 'test' || process.argv.some((arg) => 
 let server;
 
 if (!isTesting) {
-  connectDB();
+  connectDB().then(async () => {
+    try {
+      const bookCount = await Book.countDocuments();
+      if (bookCount === 0) {
+        await Book.insertMany(sampleBooks);
+        logger.info(`Auto-seeded ${sampleBooks.length} sample books.`);
+      }
+      const posterCount = await Poster.countDocuments();
+      if (posterCount === 0) {
+        await Poster.insertMany(samplePosters);
+        logger.info(`Auto-seeded ${samplePosters.length} sample promotional posters.`);
+      }
+    } catch (e) {
+      logger.warn(`Auto-seeding skipped: ${e.message}`);
+    }
+  });
   const PORT = process.env.PORT || 5000;
   server = app.listen(PORT, '0.0.0.0', () => {
     logger.info(`Unified Server running in ${process.env.NODE_ENV || 'development'} mode on http://127.0.0.1:${PORT}`);

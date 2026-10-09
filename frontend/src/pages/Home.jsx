@@ -1,7 +1,8 @@
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchFeaturedBooks, fetchBestsellers, setFilter } from '../store/slices/booksSlice';
+import api from '../api/axios';
 import BookCard from '../components/BookCard';
 import MoonLoader from '../components/MoonLoader';
 import {
@@ -15,6 +16,7 @@ import {
   ShieldCheck,
   Smartphone,
   BookOpen,
+  Tag,
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -26,16 +28,76 @@ const CATEGORIES = [
   'Science',
   'Biography',
   'Non-Fiction',
+  'Mystery',
+  'Romance',
+  'Children',
 ];
+
+const THEME_MAP = {
+  blue: {
+    gradient: 'from-blue-950 via-indigo-950 to-slate-900',
+    border: 'border-blue-900/40',
+    badge: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
+    btn: 'bg-blue-400 hover:bg-blue-300 text-black',
+    accent: 'text-blue-300',
+  },
+  amber: {
+    gradient: 'from-amber-950 via-orange-950 to-stone-900',
+    border: 'border-amber-900/40',
+    badge: 'bg-amber-500/20 text-amber-300 border-amber-400/30',
+    btn: 'bg-amber-400 hover:bg-amber-300 text-black',
+    accent: 'text-amber-300',
+  },
+  violet: {
+    gradient: 'from-purple-950 via-violet-950 to-slate-900',
+    border: 'border-purple-900/40',
+    badge: 'bg-purple-500/20 text-purple-300 border-purple-400/30',
+    btn: 'bg-purple-400 hover:bg-purple-300 text-black',
+    accent: 'text-purple-300',
+  },
+  emerald: {
+    gradient: 'from-emerald-950 via-teal-950 to-slate-900',
+    border: 'border-emerald-900/40',
+    badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
+    btn: 'bg-emerald-400 hover:bg-emerald-300 text-black',
+    accent: 'text-emerald-300',
+  },
+  rose: {
+    gradient: 'from-rose-950 via-pink-950 to-slate-900',
+    border: 'border-rose-900/40',
+    badge: 'bg-rose-500/20 text-rose-300 border-rose-400/30',
+    btn: 'bg-rose-400 hover:bg-rose-300 text-black',
+    accent: 'text-rose-300',
+  },
+  indigo: {
+    gradient: 'from-indigo-950 via-blue-950 to-slate-900',
+    border: 'border-indigo-900/40',
+    badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-400/30',
+    btn: 'bg-white hover:bg-gray-100 text-black',
+    accent: 'text-indigo-300',
+  },
+};
 
 const Home = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { featuredBooks, bestsellers, loading } = useSelector((state) => state.books);
+  const [posters, setPosters] = useState([]);
 
   useEffect(() => {
     dispatch(fetchFeaturedBooks());
     dispatch(fetchBestsellers());
+
+    api
+      .get('/posters')
+      .then((res) => {
+        if (res.data?.posters?.length) {
+          setPosters(res.data.posters);
+        }
+      })
+      .catch((err) => {
+        console.warn('Posters fallback active:', err.message);
+      });
   }, [dispatch]);
 
   const handleCategoryClick = useCallback(
@@ -212,54 +274,113 @@ const Home = () => {
           </div>
         </section>
 
-        {/* Promotional Poster Banners */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Tech Poster */}
-          <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-6 sm:p-8 flex flex-col justify-between shadow-md relative overflow-hidden">
-            <div className="space-y-2 max-w-sm z-10">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest bg-white/20 text-blue-200 px-2.5 py-1 rounded-full">
-                Tech & Developer Edition
+        {/* Promotional Poster Banners (from DB) */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 bg-black text-white rounded-lg">
+                <Tag size={16} />
               </span>
-              <h3 className="text-2xl font-extrabold font-display leading-tight">
-                Master Full-Stack, AI & Cloud Computing
-              </h3>
-              <p className="text-xs text-blue-200">
-                Download interactive programming guides and read offline while building apps.
-              </p>
+              <h2 className="text-xl sm:text-2xl font-black font-display text-gray-900 tracking-tight">
+                Featured Promotions & Banners
+              </h2>
             </div>
-            <div className="pt-6 z-10">
-              <button
-                onClick={() => handleCategoryClick('Technology')}
-                className="bg-white text-black font-extrabold px-5 py-2.5 rounded-xl text-xs hover:bg-gray-100 transition-all inline-flex items-center gap-1.5 shadow"
-              >
-                <span>Browse Tech eBooks</span>
-                <ArrowRight size={14} />
-              </button>
-            </div>
+            <Link
+              to="/books"
+              className="text-xs font-bold text-gray-700 hover:text-black flex items-center gap-1 transition-colors"
+            >
+              <span>View All eBooks</span>
+              <ArrowRight size={14} />
+            </Link>
           </div>
 
-          {/* Self-Help / Growth Poster */}
-          <div className="bg-gradient-to-r from-amber-900 via-orange-950 to-stone-900 text-white rounded-2xl p-6 sm:p-8 flex flex-col justify-between shadow-md relative overflow-hidden">
-            <div className="space-y-2 max-w-sm z-10">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest bg-white/20 text-amber-200 px-2.5 py-1 rounded-full">
-                Mindset & Productivity
-              </span>
-              <h3 className="text-2xl font-extrabold font-display leading-tight">
-                Transform Habits & Accelerate Wealth
-              </h3>
-              <p className="text-xs text-amber-200">
-                Curated psychology, business, and mindfulness bestsellers ready for your Kindle or tablet.
-              </p>
-            </div>
-            <div className="pt-6 z-10">
-              <button
-                onClick={() => handleCategoryClick('Self-Help')}
-                className="bg-amber-400 text-black font-extrabold px-5 py-2.5 rounded-xl text-xs hover:bg-amber-300 transition-all inline-flex items-center gap-1.5 shadow"
-              >
-                <span>Browse Self-Help</span>
-                <ArrowRight size={14} />
-              </button>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(posters.length > 0 ? posters : [
+              {
+                title: 'Master Full-Stack, AI & Cloud Computing',
+                subtitle: 'Download interactive developer guides and read offline while building apps.',
+                badge: 'Tech & Developer Edition',
+                image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&q=80&w=800',
+                category: 'Technology',
+                ctaText: 'Browse Tech eBooks',
+                theme: 'blue',
+                discountCode: 'TECH40',
+                discountText: 'Flat 40% OFF',
+              },
+              {
+                title: 'Transform Habits & Accelerate Wealth',
+                subtitle: 'Practical frameworks for personal mastery, extreme focus, and financial independence.',
+                badge: 'Mindset & Growth',
+                image: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&q=80&w=800',
+                category: 'Self-Help',
+                ctaText: 'Read Self-Help Titles',
+                theme: 'amber',
+                discountCode: 'READMORE',
+                discountText: 'Bestseller Picks',
+              },
+              {
+                title: 'Timeless Classic Novels & Global Fiction',
+                subtitle: 'DRM-free high-resolution PDF & EPUB literature ready for your e-reader or mobile device.',
+                badge: 'Literary Classics',
+                image: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&q=80&w=800',
+                category: 'Fiction',
+                ctaText: 'Explore Fiction Classics',
+                theme: 'violet',
+                discountCode: 'BOOK20',
+                discountText: 'Zero Delivery Fees',
+              },
+            ]).map((poster, idx) => {
+              const theme = THEME_MAP[poster.theme] || THEME_MAP.blue;
+              return (
+                <div
+                  key={poster._id || idx}
+                  className={`bg-gradient-to-br ${theme.gradient} text-white rounded-2xl p-6 flex flex-col justify-between shadow-lg border ${theme.border} relative overflow-hidden group hover:shadow-xl transition-all duration-300`}
+                >
+                  {poster.image && (
+                    <div className="absolute inset-0 opacity-15 group-hover:opacity-20 transition-opacity pointer-events-none">
+                      <img
+                        src={poster.image}
+                        alt={poster.title}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-3 z-10 relative">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-full border ${theme.badge}`}>
+                        {poster.badge || 'Featured Deal'}
+                      </span>
+                      {poster.discountText && (
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded text-amber-300">
+                          {poster.discountText}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-extrabold font-display leading-snug">
+                      {poster.title}
+                    </h3>
+                    <p className="text-xs text-gray-300 line-clamp-2">
+                      {poster.subtitle}
+                    </p>
+                  </div>
+                  <div className="pt-6 z-10 relative flex items-center justify-between">
+                    <button
+                      onClick={() => handleCategoryClick(poster.category || 'All')}
+                      className={`${theme.btn} font-extrabold px-4 py-2 rounded-xl text-xs transition-all inline-flex items-center gap-1.5 shadow active:scale-95`}
+                    >
+                      <span>{poster.ctaText || 'Explore eBooks'}</span>
+                      <ArrowRight size={13} />
+                    </button>
+                    {poster.discountCode && (
+                      <span className="text-[10px] font-mono text-gray-300">
+                        Code: <strong className="text-white font-bold">{poster.discountCode}</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
 
