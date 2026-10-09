@@ -8,20 +8,19 @@ const seed = async () => {
   try {
     await connectDB();
 
-    const email = 'admin@bookmart.com';
+    const email = process.env.ADMIN_DEFAULT_EMAIL || 'admin@bookmart.com';
     const password = process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@123456';
     const name = 'System Administrator';
 
     let admin = await User.findOne({ email });
 
     if (admin) {
-      if (admin.role !== 'admin') {
-        admin.role = 'admin';
-        await admin.save();
-        console.log(`[Admin Seed] Existing user '${email}' upgraded to 'admin' role.`);
-      } else {
-        console.log(`[Admin Seed] Admin '${email}' already exists with 'admin' role.`);
-      }
+      admin.role = 'admin';
+      admin.password = password; // Triggers pre('save') hook to rehash password
+      await admin.save();
+      console.log(`[Admin Seed] Existing admin account '${email}' synchronized and password updated successfully.`);
+      console.log(`             Email:    ${email}`);
+      console.log(`             Password: ${password}`);
     } else {
       admin = await User.create({
         name,
