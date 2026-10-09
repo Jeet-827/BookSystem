@@ -2,7 +2,7 @@ import React, { useState, memo, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logoutUser } from '../store/slices/authSlice';
-import { selectCartCount, selectOrders } from '../store/slices/cartSlice';
+import { selectCartCount } from '../store/slices/cartSlice';
 import { setFilter } from '../store/slices/booksSlice';
 import {
   Search,
@@ -15,7 +15,10 @@ import {
   X,
   Package,
   Shield,
+  Download,
 } from 'lucide-react';
+
+const EMPTY_ARRAY = [];
 
 const Navbar = memo(() => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,7 +29,7 @@ const Navbar = memo(() => {
 
   const { user, isAuthenticated } = useSelector((state) => state.auth);
   const cartCount = useSelector(selectCartCount);
-  const orders = useSelector(selectOrders);
+  const orders = useSelector((state) => state.orders?.orders || EMPTY_ARRAY);
 
   const handleSearchSubmit = useCallback(
     (e) => {

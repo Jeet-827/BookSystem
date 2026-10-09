@@ -43,7 +43,7 @@ const BookDetail = () => {
   const handleBuyNow = useCallback(() => {
     if (book) {
       dispatch(addToCart(book));
-      navigate('/cart');
+      navigate('/checkout');
     }
   }, [dispatch, book, navigate]);
 
@@ -154,16 +154,16 @@ const BookDetail = () => {
           {/* Assurance Box */}
           <div className="bg-slate-50 p-4 rounded-xl border border-gray-200 space-y-2.5 text-xs text-gray-700">
             <div className="flex items-center gap-2.5">
-              <ShieldCheck size={16} className="text-emerald-600" />
-              <span>100% Genuine Physical Book Copy</span>
+              <Download size={16} className="text-emerald-600" />
+              <span>Instant Download Upon Payment Confirmation</span>
             </div>
             <div className="flex items-center gap-2.5">
-              <Truck size={16} className="text-blue-600" />
-              <span>Express Delivery in 2-3 Days</span>
+              <ShieldCheck size={16} className="text-blue-600" />
+              <span>Offline Reading Compatible (PDF, EPUB, Tablet & PC)</span>
             </div>
             <div className="flex items-center gap-2.5">
               <RotateCcw size={16} className="text-black" />
-              <span>7-Day Replacement & 1-Day Refund Guarantee</span>
+              <span>24-Hour Instant Refund Guarantee Protection</span>
             </div>
           </div>
         </div>
@@ -227,29 +227,40 @@ const BookDetail = () => {
             </p>
           </div>
 
-          {/* Digital Copy Callout */}
-          {book.downloadUrl && (
-            <div className="bg-slate-50 border border-dashed border-gray-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <FileCheck size={26} className="text-emerald-600 flex-shrink-0" />
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-gray-900">
-                    Instant Digital Copy Included ({book.fileFormat || 'PDF'})
-                  </h4>
-                  <p className="text-[11px] text-gray-500">
-                    Size: {book.fileSize || 'Standard'} • Unlocked on checkout
-                  </p>
-                </div>
+          {/* Digital Edition Callout */}
+          <div className="bg-slate-50 border border-emerald-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <FileCheck size={26} className="text-emerald-600 flex-shrink-0" />
+              <div>
+                <h4 className="text-xs sm:text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                  <span>Digital Edition Included ({book.fileFormat || 'PDF'})</span>
+                  <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                    Instant Download
+                  </span>
+                </h4>
+                <p className="text-[11px] text-gray-500">
+                  Size: {book.fileSize || '4.5 MB'} • Unlocked immediately upon payment • Read offline
+                </p>
               </div>
+            </div>
+            {book.downloadUrl ? (
               <button
                 onClick={handleDownloadFile}
-                className="bg-black text-white px-3.5 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-800 flex items-center gap-1.5 flex-shrink-0"
+                className="bg-black text-white px-3.5 py-1.5 rounded-lg text-xs font-bold hover:bg-gray-800 flex items-center gap-1.5 flex-shrink-0 transition-all"
+              >
+                <Download size={13} className="text-amber-400" />
+                <span>Sample {book.fileFormat || 'PDF'}</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleBuyNow}
+                className="bg-emerald-600 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 flex items-center gap-1.5 flex-shrink-0 transition-all"
               >
                 <Download size={13} />
-                <span>Sample PDF</span>
+                <span>Buy & Download</span>
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Specifications Table */}
           <div className="space-y-3">

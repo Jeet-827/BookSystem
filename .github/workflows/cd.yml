@@ -1,0 +1,74 @@
+name: CD Deployment
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Services to trigger deploy for'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - frontend
+          - backend
+          - admin-server
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ==========================================
+  # TRIGGER RENDER AUTOMATED DEPLOYMENTS
+  # ==========================================
+  deploy-to-render:
+    name: Deploy to Render Cloud
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Trigger Backend API Deployment
+        if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'backend' || github.event_name == 'push' }}
+        run: |
+          if [ -n "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK }}" ]; then
+            echo "🚀 Triggering Backend Web Service deploy hook on Render..."
+            curl -s -X POST "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK }}"
+            echo "✅ Backend deploy request sent."
+          else
+            echo "ℹ️ RENDER_BACKEND_DEPLOY_HOOK not configured in GitHub Secrets. Skipping webhook trigger (Render automatically deploys on push when linked to GitHub)."
+          fi
+
+      - name: Trigger Admin Server Deployment
+        if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'admin-server' || github.event_name == 'push' }}
+        run: |
+          if [ -n "${{ secrets.RENDER_ADMIN_DEPLOY_HOOK }}" ]; then
+            echo "🚀 Triggering Admin Server deploy hook on Render..."
+            curl -s -X POST "${{ secrets.RENDER_ADMIN_DEPLOY_HOOK }}"
+            echo "✅ Admin server deploy request sent."
+          else
+            echo "ℹ️ RENDER_ADMIN_DEPLOY_HOOK not configured in GitHub Secrets. Skipping webhook trigger."
+          fi
+
+      - name: Trigger Frontend Static Site Deployment
+        if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'frontend' || github.event_name == 'push' }}
+        run: |
+          if [ -n "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK }}" ]; then
+            echo "🚀 Triggering Frontend Static Site deploy hook on Render..."
+            curl -s -X POST "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK }}"
+            echo "✅ Frontend deploy request sent."
+          else
+            echo "ℹ️ RENDER_FRONTEND_DEPLOY_HOOK not configured in GitHub Secrets. Skipping webhook trigger."
+          fi
+
+      - name: Deployment Summary
+        run: |
+          echo "### 🚀 Deployment Trigger Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Render Blueprint:** Configured via \`render.yaml\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** All deployment trigger steps finished successfully." >> $GITHUB_STEP_SUMMARY

@@ -5,15 +5,24 @@ import assert from 'node:assert/strict';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import app from '../server.js';
-import connectDB from '../config/db.js';
 
 describe('BookMart Admin Server API Tests', () => {
+  let dbConnected = false;
+
   before(async () => {
-    await connectDB();
+    try {
+      const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/bookmart';
+      await mongoose.connect(uri, { serverSelectionTimeoutMS: 2000 });
+      dbConnected = mongoose.connection.readyState === 1;
+    } catch {
+      dbConnected = false;
+    }
   });
 
   after(async () => {
-    await mongoose.connection.close();
+    if (dbConnected) {
+      await mongoose.connection.close();
+    }
   });
 
   test('GET /api/health returns status OK and admin server name', async () => {
@@ -32,6 +41,16 @@ describe('BookMart Admin Server API Tests', () => {
 
   test('GET /api/admin/dashboard/metrics requires authentication (401)', async () => {
     const res = await request(app).get('/api/admin/dashboard/metrics');
+    assert.equal(res.status, 401);
+  });
+
+  test('GET /api/admin/orders requires authentication (401)', async () => {
+    const res = await request(app).get('/api/admin/orders');
+    assert.equal(res.status, 401);
+  });
+
+  test('GET /api/admin/orders/stats requires authentication (401)', async () => {
+    const res = await request(app).get('/api/admin/orders/stats');
     assert.equal(res.status, 401);
   });
 

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "BookMart - Flipkart-inspired MERN Book Buying System with Redux Toolkit & ES6+ MVC Architecture",
   "scripts": {
+    "dev": "npm run frontend",
     "install-all": "npm install --prefix backend && npm install --prefix frontend && npm install --prefix admin-server",
     "backend": "npm run dev --prefix backend",
     "frontend": "npm run dev --prefix frontend",

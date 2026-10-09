@@ -1,28 +1,42 @@
-import 'dotenv/config'; // Must be first — loads .env before other modules
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
+import cookieParser from 'cookie-parser';
+import mongoose from 'mongoose';
+
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import bookRoutes from './routes/bookRoutes.js';
+import orderRoutes from './routes/orderRoutes.js';
+import adminBookRoutes from './routes/adminBookRoutes.js';
+import adminUserRoutes from './routes/adminUserRoutes.js';
+import adminDashboardRoutes from './routes/adminDashboardRoutes.js';
+import adminSystemRoutes from './routes/adminSystemRoutes.js';
+import adminOrderRoutes from './routes/adminOrderRoutes.js';
+
+import { errorHandler } from './middleware/errorHandler.js';
 import logger from './utils/logger.js';
 
 const app = express();
 
-// --- Security Middleware ---
+// Trust proxy for rate limiting and IP detection behind Render / Nginx
+app.set('trust proxy', 1);
 
-// Helmet: Sets secure HTTP headers (XSS protection, clickjacking prevention, etc.)
+// --- Security Middleware ---
 app.use(helmet());
 
-// CORS: Only allow known origins
+// CORS: Allow local dev origins + process.env.CLIENT_URL
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'http://localhost:5001',
+  'http://127.0.0.1:5001',
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
@@ -32,36 +46,49 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+      try {
+        const { hostname } = new URL(origin);
+        if (
+          hostname.endsWith('.vercel.app') ||
+          hostname === 'vercel.app' ||
+          hostname.endsWith('.onrender.com') ||
+          hostname === 'onrender.com'
+        ) {
+          return callback(null, true);
+        }
+      } catch {
+        if (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com')) {
+          return callback(null, true);
+        }
+      }
       return callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     credentials: true,
   })
 );
 
-// Body Parsers
-app.use(express.json({ limit: '10kb' })); // Limit body size to prevent large payload attacks
+// Body Parsers & Cookie Parser
+app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
-// NoSQL Injection Prevention: Strips $ and . from req.body, req.query, req.params
+// NoSQL Injection & HTTP Parameter Pollution protection
 app.use(mongoSanitize());
-
-// HTTP Parameter Pollution: Prevents duplicate query params
 app.use(hpp());
 
-// Rate Limiting: Prevent brute-force and DDoS attacks
+// Rate Limiting
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,                  // 100 requests per window per IP
-  message: { message: 'Too many requests, please try again after 15 minutes' },
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { success: false, message: 'Too many requests, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Stricter rate limit for auth endpoints (login/register)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,                   // 20 attempts per window per IP
-  message: { message: 'Too many login attempts, please try again after 15 minutes' },
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, message: 'Too many login attempts, please try again after 15 minutes' },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -70,55 +97,80 @@ app.use('/api', apiLimiter);
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 
-// Cookie Parser Middleware with native fallback
-app.use((req, res, next) => {
-  req.cookies = req.cookies || {};
-  if (req.headers.cookie) {
-    req.headers.cookie.split(';').forEach((c) => {
-      const idx = c.indexOf('=');
-      if (idx !== -1) {
-        const key = c.substring(0, idx).trim();
-        const val = c.substring(idx + 1).trim();
-        req.cookies[key] = decodeURIComponent(val);
-      }
-    });
-  }
-  next();
-});
-
-// Routes
+// Customer API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/books', bookRoutes);
+app.use('/api/orders', orderRoutes);
 
+// Admin API Routes (Unified on port 5000)
+app.use('/api/admin/auth', authRoutes);
+app.use('/api/admin/books', adminBookRoutes);
+app.use('/api/admin/users', adminUserRoutes);
+app.use('/api/admin/dashboard', adminDashboardRoutes);
+app.use('/api/admin/system', adminSystemRoutes);
+app.use('/api/admin/orders', adminOrderRoutes);
+
+// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
+    success: true,
     status: 'OK',
-    server: 'BookMart Customer API',
+    server: 'BookMart Unified API (Customer + Admin)',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
 });
 
+// 404 Route Not Found
 app.use((req, res) => {
-  res.status(404).json({ message: `Route not found: ${req.method} ${req.originalUrl}` });
+  res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
 });
 
-// Global Error Handler
-app.use((err, req, res, next) => {
-  logger.error(`Unhandled Error: ${err.message}`, err.stack);
-  res.status(err.status || 500).json({
-    message: err.message || 'Server error',
-  });
-});
+// Central Error Handler
+app.use(errorHandler);
 
 const isTesting = process.env.NODE_ENV === 'test' || process.argv.some((arg) => arg.includes('test'));
+
+let server;
 
 if (!isTesting) {
   connectDB();
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, '0.0.0.0', () => {
-    logger.info(`Server running in ${process.env.NODE_ENV || 'development'} mode on http://127.0.0.1:${PORT}`);
+  server = app.listen(PORT, '0.0.0.0', () => {
+    logger.info(`Unified Server running in ${process.env.NODE_ENV || 'development'} mode on http://127.0.0.1:${PORT}`);
   });
 }
+
+// Graceful Shutdown for Production Containers & Cloud Services (Render / Docker)
+const gracefulShutdown = (signal) => {
+  logger.info(`Received ${signal}. Shutting down gracefully...`);
+  if (server) {
+    server.close(async () => {
+      logger.info('HTTP server closed.');
+      try {
+        await mongoose.connection.close(false);
+        logger.info('MongoDB connection closed.');
+        process.exit(0);
+      } catch (err) {
+        logger.error(`Error closing MongoDB: ${err.message}`);
+        process.exit(1);
+      }
+    });
+  } else {
+    process.exit(0);
+  }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason) => {
+  logger.error(`Unhandled Rejection: ${reason?.message || reason}`);
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error(`Uncaught Exception: ${err.message}`);
+  process.exit(1);
+});
 
 export default app;

@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import Book from './models/Book.js';
-import { sampleBooks } from './controllers/bookController.js';
+import { sampleBooks } from './data/sampleBooks.js';
 
 dotenv.config();
 

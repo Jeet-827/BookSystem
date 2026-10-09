@@ -5,12 +5,14 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';
+import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import adminAuthRoutes from './routes/adminAuthRoutes.js';
 import adminDashboardRoutes from './routes/adminDashboardRoutes.js';
 import adminBookRoutes from './routes/adminBookRoutes.js';
 import adminUserRoutes from './routes/adminUserRoutes.js';
 import adminSystemRoutes from './routes/adminSystemRoutes.js';
+import adminOrderRoutes from './routes/adminOrderRoutes.js';
 import logger from './utils/logger.js';
 
 const app = express();
@@ -37,6 +39,21 @@ app.use(
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
+      }
+      try {
+        const { hostname } = new URL(origin);
+        if (
+          hostname.endsWith('.vercel.app') ||
+          hostname === 'vercel.app' ||
+          hostname.endsWith('.onrender.com') ||
+          hostname === 'onrender.com'
+        ) {
+          return callback(null, true);
+        }
+      } catch {
+        if (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com')) {
+          return callback(null, true);
+        }
       }
       return callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
@@ -98,6 +115,7 @@ app.use('/api/admin/dashboard', adminDashboardRoutes);
 app.use('/api/admin/books', adminBookRoutes);
 app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/admin/system', adminSystemRoutes);
+app.use('/api/admin/orders', adminOrderRoutes);
 
 // Health Check Endpoints
 app.get('/api/health', (req, res) => {
@@ -137,12 +155,46 @@ app.use((err, req, res, next) => {
 
 const isTesting = process.env.NODE_ENV === 'test' || process.argv.some((arg) => arg.includes('test'));
 
+let server;
+
 if (!isTesting) {
   connectDB();
   const PORT = process.env.PORT || 5001;
-  app.listen(PORT, '0.0.0.0', () => {
+  server = app.listen(PORT, '0.0.0.0', () => {
     logger.info(`BookMart ADMIN Server running on http://127.0.0.1:${PORT}`);
   });
 }
+
+// Graceful Shutdown for Production Containers & Cloud Services (Render / Docker)
+const gracefulShutdown = (signal) => {
+  logger.info(`Admin server received ${signal}. Shutting down gracefully...`);
+  if (server) {
+    server.close(async () => {
+      logger.info('Admin HTTP server closed.');
+      try {
+        await mongoose.connection.close(false);
+        logger.info('Admin MongoDB connection closed.');
+        process.exit(0);
+      } catch (err) {
+        logger.error(`Error closing MongoDB in admin server: ${err.message}`);
+        process.exit(1);
+      }
+    });
+  } else {
+    process.exit(0);
+  }
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason) => {
+  logger.error(`Admin Server Unhandled Rejection: ${reason?.message || reason}`);
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error(`Admin Server Uncaught Exception: ${err.message}`);
+  process.exit(1);
+});
 
 export default app;

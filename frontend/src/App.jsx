@@ -2,14 +2,11 @@ import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { checkAuthSession } from './store/slices/authSlice';
-
-// Core UI Components
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import MoonLoader from './components/MoonLoader';
 import ErrorBoundary from './components/ErrorBoundary';
 
-// Lazy Loaded Page Components (Code-Splitting for optimal performance)
 const Home = lazy(() => import('./pages/Home'));
 const Books = lazy(() => import('./pages/Books'));
 const BookDetail = lazy(() => import('./pages/BookDetail'));
@@ -17,6 +14,7 @@ const Cart = lazy(() => import('./pages/Cart'));
 const Orders = lazy(() => import('./pages/Orders'));
 const Login = lazy(() => import('./pages/Login'));
 const Register = lazy(() => import('./pages/Register'));
+const Checkout = lazy(() => import('./pages/Checkout'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 
 // Fallback Loading Component
@@ -45,6 +43,7 @@ function App() {
               <Route path="/books" element={<Books />} />
               <Route path="/books/:id" element={<BookDetail />} />
               <Route path="/cart" element={<Cart />} />
+              <Route path="/checkout" element={<Checkout />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />

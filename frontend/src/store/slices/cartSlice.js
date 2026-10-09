@@ -2,8 +2,6 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   items: [],
-  orders: [],
-  purchasedBooks: [],
 };
 
 const cartSlice = createSlice({
@@ -58,47 +56,6 @@ const cartSlice = createSlice({
     clearCart: (state) => {
       state.items = [];
     },
-
-    placeOrder: (state, action) => {
-      const { items, totalAmount, deliveryCharge } = action.payload;
-      const newOrder = {
-        orderId: `ORD-${Math.floor(100000 + Math.random() * 900000)}`,
-        date: new Date().toLocaleDateString('en-IN', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        }),
-        items: [...items],
-        totalAmount,
-        deliveryCharge,
-        status: 'Confirmed',
-        refundStatus: null,
-      };
-
-      state.orders.unshift(newOrder);
-
-      // Add items to purchased list
-      const existingIds = new Set(state.purchasedBooks.map((b) => b._id));
-      const newlyPurchased = items.filter((item) => !existingIds.has(item._id));
-      state.purchasedBooks = [...newlyPurchased, ...state.purchasedBooks];
-
-      // Clear cart
-      state.items = [];
-    },
-
-    requestRefund: (state, action) => {
-      const { orderId, reason } = action.payload;
-      const order = state.orders.find((o) => o.orderId === orderId);
-      if (order) {
-        order.status = 'Refund Initiated (1-Day Guarantee)';
-        order.refundStatus = {
-          requestedAt: new Date().toLocaleDateString(),
-          estimatedRefund: 'Within 24 Hours (1 Day)',
-          reason: reason || 'Customer requested 1-day return',
-          refundAmount: order.totalAmount,
-        };
-      }
-    },
   },
 });
 
@@ -107,14 +64,10 @@ export const {
   removeFromCart,
   updateQuantity,
   clearCart,
-  placeOrder,
-  requestRefund,
 } = cartSlice.actions;
 
 // Selectors
 export const selectCartItems = (state) => state.cart.items;
-export const selectOrders = (state) => state.cart.orders;
-export const selectPurchasedBooks = (state) => state.cart.purchasedBooks;
 export const selectCartCount = (state) =>
   state.cart.items.reduce((total, item) => total + item.quantity, 0);
 export const selectCartSubtotal = (state) =>

@@ -4,7 +4,12 @@ import logger from '../utils/logger.js';
 export const connectDB = async () => {
   try {
     const dbUrl = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/bookmart';
-    const db = await mongoose.connect(dbUrl);
+    const options = {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    };
+    const db = await mongoose.connect(dbUrl, options);
     logger.info(`Database connected: ${db.connection.host}/${db.connection.name}`);
     return db;
   } catch (error) {
@@ -14,6 +19,10 @@ export const connectDB = async () => {
     }
   }
 };
+
+mongoose.connection.on('disconnected', () => {
+  logger.warn('MongoDB connection lost. Reconnecting...');
+});
 
 export const getDbStatus = () => {
   const state = mongoose.connection.readyState;

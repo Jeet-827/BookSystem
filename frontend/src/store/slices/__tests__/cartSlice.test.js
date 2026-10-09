@@ -4,8 +4,6 @@ import cartReducer, {
   removeFromCart,
   updateQuantity,
   clearCart,
-  placeOrder,
-  requestRefund,
   selectCartCount,
   selectCartSubtotal,
   selectCartTotal,
@@ -20,25 +18,27 @@ const sampleBook = {
   originalPrice: 800,
   stock: 10,
   category: 'Technology',
+  downloadUrl: 'https://example.com/clean-code.pdf',
+  fileFormat: 'PDF',
+  fileSize: '4.5 MB',
 };
 
 describe('cartSlice reducers and selectors', () => {
   const initialCartState = {
     items: [],
-    orders: [],
-    purchasedBooks: [],
   };
 
   it('should return initial state when passed empty action', () => {
     expect(cartReducer(undefined, { type: undefined })).toEqual(initialCartState);
   });
 
-  it('should add a book to the cart with default quantity of 1', () => {
+  it('should add a book to the cart with default quantity of 1 and format properties', () => {
     const nextState = cartReducer(initialCartState, addToCart(sampleBook));
     expect(nextState.items).toHaveLength(1);
     expect(nextState.items[0]._id).toBe('book-123');
     expect(nextState.items[0].quantity).toBe(1);
     expect(nextState.items[0].price).toBe(500);
+    expect(nextState.items[0].fileFormat).toBe('PDF');
   });
 
   it('should increment quantity when adding an existing book', () => {
@@ -78,41 +78,6 @@ describe('cartSlice reducers and selectors', () => {
     expect(nextState.items).toHaveLength(0);
   });
 
-  it('should place an order, clear cart, and append to purchasedBooks and orders', () => {
-    const stateWithItem = cartReducer(initialCartState, addToCart(sampleBook));
-    const orderPayload = {
-      items: stateWithItem.items,
-      totalAmount: 500,
-      deliveryCharge: 0,
-    };
-    const nextState = cartReducer(stateWithItem, placeOrder(orderPayload));
-    expect(nextState.items).toHaveLength(0);
-    expect(nextState.orders).toHaveLength(1);
-    expect(nextState.orders[0].totalAmount).toBe(500);
-    expect(nextState.purchasedBooks).toHaveLength(1);
-  });
-
-  it('should request 1-day instant refund and update order status', () => {
-    const stateWithItem = cartReducer(initialCartState, addToCart(sampleBook));
-    const orderPayload = {
-      items: stateWithItem.items,
-      totalAmount: 500,
-      deliveryCharge: 0,
-    };
-    const orderedState = cartReducer(stateWithItem, placeOrder(orderPayload));
-    const orderId = orderedState.orders[0].orderId;
-
-    const refundedState = cartReducer(
-      orderedState,
-      requestRefund({ orderId, reason: 'Found a better price' })
-    );
-
-    const refundedOrder = refundedState.orders.find((o) => o.orderId === orderId);
-    expect(refundedOrder.status).toContain('Refund Initiated');
-    expect(refundedOrder.refundStatus.refundAmount).toBe(500);
-    expect(refundedOrder.refundStatus.reason).toBe('Found a better price');
-  });
-
   it('should correctly calculate selectors for cartCount, subtotal, total, and discount', () => {
     const mockRootState = {
       cart: {
@@ -120,8 +85,6 @@ describe('cartSlice reducers and selectors', () => {
           { _id: '1', price: 300, originalPrice: 500, quantity: 2 },
           { _id: '2', price: 200, originalPrice: 400, quantity: 1 },
         ],
-        orders: [],
-        purchasedBooks: [],
       },
     };
 

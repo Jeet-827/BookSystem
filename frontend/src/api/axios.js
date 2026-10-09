@@ -9,7 +9,7 @@ export const setAccessToken = (t) => {
 export const getAccessToken = () => token;
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -38,7 +38,8 @@ api.interceptors.response.use(
       request._retry = true;
       try {
         // Request new access token using HTTP-only refresh token cookie
-        const res = await axios.post('/api/auth/refresh', {}, { withCredentials: true });
+        const baseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+        const res = await axios.post(`${baseURL}/auth/refresh`, {}, { withCredentials: true });
         if (res.data?.accessToken) {
           setAccessToken(res.data.accessToken);
           request.headers.Authorization = `Bearer ${res.data.accessToken}`;

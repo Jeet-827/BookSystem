@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 1. MongoDB Database
+  # ==========================================
+  mongodb:
+    image: mongo:7.0
+    container_name: bookmart_mongodb
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bookmart_network
+
+  # ==========================================
+  # 2. Unified Backend API (Port 5000)
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bookmart_backend
+    restart: unless-stopped
+    ports:
+      - '5000:5000'
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      MONGO_URI: mongodb://mongodb:27017/bookmart
+      JWT_SECRET: bookmart_super_secure_jwt_secret_production_2024
+      JWT_REFRESH_SECRET: bookmart_refresh_secret_key_production_2024
+      CLIENT_URL: http://localhost:80
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - bookmart_network
+
+  # ==========================================
+  # 3. Dedicated Admin Server (Port 5001)
+  # ==========================================
+  admin-server:
+    build:
+      context: ./admin-server
+      dockerfile: Dockerfile
+    container_name: bookmart_admin_server
+    restart: unless-stopped
+    ports:
+      - '5001:5001'
+    environment:
+      NODE_ENV: production
+      PORT: 5001
+      MONGO_URI: mongodb://mongodb:27017/bookmart
+      JWT_SECRET: bookmart_super_secure_jwt_secret_production_2024
+      JWT_REFRESH_SECRET: bookmart_refresh_secret_key_production_2024
+      ADMIN_DEFAULT_EMAIL: admin@bookmart.com
+      ADMIN_DEFAULT_PASSWORD: Admin@123456
+      CLIENT_URL: http://localhost:80
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - bookmart_network
+
+  # ==========================================
+  # 4. Frontend Web App (Nginx on Port 80)
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: bookmart_frontend
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    depends_on:
+      - backend
+    networks:
+      - bookmart_network
+
+volumes:
+  mongo_data:
+    driver: local
+
+networks:
+  bookmart_network:
+    driver: bridge

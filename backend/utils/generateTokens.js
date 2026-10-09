@@ -1,11 +1,8 @@
+import 'dotenv/config';
 import jwt from 'jsonwebtoken';
 
-const ACCESS_SECRET = process.env.JWT_SECRET;
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
-
-if (!ACCESS_SECRET || !REFRESH_SECRET) {
-  throw new Error('JWT_SECRET and JWT_REFRESH_SECRET must be set in environment variables');
-}
+const ACCESS_SECRET = process.env.JWT_SECRET || 'bookmart_super_secret_jwt_key_2024';
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'bookmart_refresh_secret_key_2024_secure';
 
 /**
  * Generates short-lived Access Token (15 minutes) for API authorization
@@ -33,12 +30,13 @@ export const generateRefreshToken = (id) => {
  */
 export const setCookies = (res, accessToken, refreshToken) => {
   const isProd = process.env.NODE_ENV === 'production';
+  const sameSite = isProd ? 'none' : 'lax';
 
   // Access Token Cookie (15 mins)
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    sameSite,
     maxAge: 15 * 60 * 1000, // 15 mins
   });
 
@@ -46,7 +44,7 @@ export const setCookies = (res, accessToken, refreshToken) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    sameSite,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
@@ -56,8 +54,15 @@ export const setCookies = (res, accessToken, refreshToken) => {
  * @param {Object} res - Express Response object
  */
 export const clearCookies = (res) => {
-  res.clearCookie('accessToken');
-  res.clearCookie('refreshToken');
+  const isProd = process.env.NODE_ENV === 'production';
+  const sameSite = isProd ? 'none' : 'lax';
+  const options = {
+    httpOnly: true,
+    secure: isProd,
+    sameSite,
+  };
+  res.clearCookie('accessToken', options);
+  res.clearCookie('refreshToken', options);
 };
 
 export { ACCESS_SECRET, REFRESH_SECRET };

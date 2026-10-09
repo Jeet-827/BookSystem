@@ -8,8 +8,14 @@ export const setAdminToken = (t) => {
 
 export const getAdminToken = () => adminToken;
 
+const getAdminBaseURL = () => {
+  if (import.meta.env.VITE_ADMIN_API_BASE_URL) return import.meta.env.VITE_ADMIN_API_BASE_URL;
+  if (import.meta.env.VITE_API_BASE_URL) return `${import.meta.env.VITE_API_BASE_URL}/admin`;
+  return '/api/admin';
+};
+
 const adminApi = axios.create({
-  baseURL: '/api/admin',
+  baseURL: getAdminBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -39,7 +45,8 @@ adminApi.interceptors.response.use(
     ) {
       request._retry = true;
       try {
-        const res = await axios.post('/api/admin/auth/refresh', {}, { withCredentials: true });
+        const baseURL = getAdminBaseURL();
+        const res = await axios.post(`${baseURL}/auth/refresh`, {}, { withCredentials: true });
         if (res.data?.accessToken) {
           setAdminToken(res.data.accessToken);
           request.headers.Authorization = `Bearer ${res.data.accessToken}`;
