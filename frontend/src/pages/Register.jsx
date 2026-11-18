@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { registerUser, clearAuthError } from '../store/slices/authSlice';
-import { AlertCircle, Lock, Mail, User } from 'lucide-react';
+import { AlertCircle, Lock, Mail, User, ShieldCheck } from 'lucide-react';
+import { validateGenuineEmail } from '../utils/emailValidator';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -15,14 +16,26 @@ const Register = () => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, loading, error } = useSelector((state) => state.auth);
+  const redirect = new URLSearchParams(location.search).get('redirect') || '/';
 
   useEffect(() => {
     dispatch(clearAuthError());
     if (isAuthenticated) {
-      navigate('/');
+      if (redirect === 'checkout') {
+        navigate('/checkout');
+      } else if (redirect === 'cart') {
+        navigate('/cart');
+      } else if (redirect && redirect.startsWith('/')) {
+        navigate(redirect);
+      } else if (redirect && redirect !== '/') {
+        navigate(`/${redirect}`);
+      } else {
+        navigate('/');
+      }
     }
-  }, [isAuthenticated, navigate, dispatch]);
+  }, [isAuthenticated, navigate, redirect, dispatch]);
 
   const handleChange = useCallback((e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -32,6 +45,14 @@ const Register = () => {
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault();
+
+      // Enforce Genuine Email Validation (Blocks test.com, disposable & placeholder emails)
+      const emailValidation = validateGenuineEmail(formData.email);
+      if (!emailValidation.isValid) {
+        setLocalError(emailValidation.message);
+        return;
+      }
+
       if (formData.password !== formData.confirmPassword) {
         setLocalError('Passwords do not match');
         return;
@@ -42,8 +63,8 @@ const Register = () => {
       }
       dispatch(
         registerUser({
-          name: formData.name,
-          email: formData.email,
+          name: formData.name.trim(),
+          email: emailValidation.sanitizedEmail,
           password: formData.password,
         })
       );
@@ -90,10 +111,14 @@ const Register = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1" htmlFor="email">
-              Email Address
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-gray-700" htmlFor="email">
+                Email Address
+              </label>
+              <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
+                <ShieldCheck size={11} /> Genuine Email Required
+              </span>
+            </div>
             <div className="relative flex items-center">
               <Mail size={16} className="absolute left-3 text-gray-400" />
               <input
@@ -101,13 +126,15 @@ const Register = () => {
                 id="email"
                 name="email"
                 required
-                placeholder="name@example.com"
+                placeholder="name@gmail.com"
                 value={formData.email}
                 onChange={handleChange}
                 className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-gray-300 rounded-lg text-xs sm:text-sm focus:outline-none focus:border-black focus:ring-1 focus:ring-black"
               />
             </div>
-          </div>
+            <p className="text-[10px] text-gray-400 mt-1">
+              Please use a genuine email (e.g. Gmail, Yahoo, Outlook). Test and disposable domains (e.g. test.com) are not accepted.
+            </p>
 
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1" htmlFor="password">

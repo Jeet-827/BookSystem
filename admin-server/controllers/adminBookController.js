@@ -16,7 +16,6 @@ export const sampleBooks = [
     category: 'Fiction',
     rating: 4.6,
     reviewCount: 2341,
-    stock: 25,
     pages: 180,
     publisher: 'Scribner',
     publishedYear: 1925,
@@ -38,7 +37,6 @@ export const sampleBooks = [
     category: 'Self-Help',
     rating: 4.9,
     reviewCount: 8921,
-    stock: 50,
     pages: 320,
     publisher: 'Avery',
     publishedYear: 2018,
@@ -60,7 +58,6 @@ export const sampleBooks = [
     category: 'Technology',
     rating: 4.8,
     reviewCount: 5432,
-    stock: 18,
     pages: 464,
     publisher: 'Prentice Hall',
     publishedYear: 2008,
@@ -82,7 +79,6 @@ export const sampleBooks = [
     category: 'History',
     rating: 4.7,
     reviewCount: 12043,
-    stock: 35,
     pages: 443,
     publisher: 'Harper',
     publishedYear: 2011,
@@ -104,7 +100,6 @@ export const sampleBooks = [
     category: 'Fiction',
     rating: 4.5,
     reviewCount: 15890,
-    stock: 40,
     pages: 208,
     publisher: 'HarperOne',
     publishedYear: 1988,
@@ -126,7 +121,6 @@ export const sampleBooks = [
     category: 'Technology',
     rating: 4.6,
     reviewCount: 4210,
-    stock: 19,
     pages: 176,
     publisher: "O'Reilly Media",
     publishedYear: 2008,
@@ -143,7 +137,6 @@ export const getAdminBooks = async (req, res) => {
       category,
       minPrice,
       maxPrice,
-      stockStatus,
       isFeatured,
       isBestseller,
       sort = 'newest',
@@ -164,16 +157,7 @@ export const getAdminBooks = async (req, res) => {
       query.category = category;
     }
 
-    // 3. Stock filter
-    if (stockStatus === 'out') {
-      query.stock = { $lte: 0 };
-    } else if (stockStatus === 'low') {
-      query.stock = { $gt: 0, $lte: 5 };
-    } else if (stockStatus === 'in') {
-      query.stock = { $gt: 0 };
-    }
-
-    // 4. Boolean flags
+    // 3. Boolean flags
     if (isFeatured !== undefined && isFeatured !== '') {
       query.isFeatured = isFeatured === 'true';
     }
@@ -198,12 +182,6 @@ export const getAdminBooks = async (req, res) => {
         break;
       case 'price_desc':
         sortBy = { price: -1 };
-        break;
-      case 'stock_asc':
-        sortBy = { stock: 1 };
-        break;
-      case 'stock_desc':
-        sortBy = { stock: -1 };
         break;
       case 'title_asc':
         sortBy = { title: 1 };
@@ -273,7 +251,6 @@ export const createAdminBook = async (req, res) => {
       fileFormat,
       fileSize,
       category,
-      stock,
       isbn,
       language,
       pages,
@@ -284,34 +261,45 @@ export const createAdminBook = async (req, res) => {
       rating,
     } = req.body;
 
-    if (!title || !author || !description || price === undefined || originalPrice === undefined || !category) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide all required fields: title, author, description, price, originalPrice, category',
-      });
-    }
-
-    const book = await Book.create({
-      title: String(title).trim(),
-      author: String(author).trim(),
-      description: String(description).trim(),
-      price: Number(price),
-      originalPrice: Number(originalPrice),
-      image: image || '',
-      downloadUrl: downloadUrl || '',
-      fileFormat: fileFormat || 'PDF',
-      fileSize: fileSize || '3.5 MB',
-      category: String(category).trim(),
-      stock: stock !== undefined ? Number(stock) : 10,
-      isbn: isbn ? String(isbn).trim() : '',
-      language: language || 'English',
-      pages: pages ? Number(pages) : undefined,
-      publisher: publisher ? String(publisher).trim() : undefined,
-      publishedYear: publishedYear ? Number(publishedYear) : undefined,
-      isFeatured: Boolean(isFeatured),
-      isBestseller: Boolean(isBestseller),
-      rating: rating ? Number(rating) : 4.0,
+  if (!title || !author || price === undefined || price === null || price === '') {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide at least title, author, and price to create a book.',
     });
+  }
+
+  const numericPrice = Number(price);
+  const numericOriginalPrice =
+    originalPrice !== undefined && originalPrice !== '' && !isNaN(Number(originalPrice))
+      ? Number(originalPrice)
+      : numericPrice;
+
+  const defaultDesc = `${String(title).trim()} by ${String(author).trim()}. Premium digital eBook edition available for instant download on redkitindia.`;
+
+  const book = await Book.create({
+    title: String(title).trim(),
+    author: String(author).trim(),
+    description: description && String(description).trim() ? String(description).trim() : defaultDesc,
+    price: numericPrice,
+    originalPrice: numericOriginalPrice,
+    image:
+      image ||
+      'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400',
+    downloadUrl:
+      downloadUrl ||
+      'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    fileFormat: fileFormat || 'PDF',
+    fileSize: fileSize || '4.2 MB',
+    category: category && String(category).trim() ? String(category).trim() : 'Fiction',
+    isbn: isbn ? String(isbn).trim() : '',
+    language: language || 'English',
+    pages: pages ? Number(pages) : 250,
+    publisher: publisher ? String(publisher).trim() : 'redkitindia Publishing',
+    publishedYear: publishedYear ? Number(publishedYear) : new Date().getFullYear(),
+    isFeatured: Boolean(isFeatured),
+    isBestseller: Boolean(isBestseller),
+    rating: rating ? Number(rating) : 4.5,
+  });
 
     await logAction({
       admin: req.admin,
@@ -504,38 +492,18 @@ export const toggleBestseller = async (req, res) => {
   }
 };
 
-// @desc    Quick update stock count
+// @desc    Quick update stock count (no-op for digital books)
 // @route   PATCH /api/admin/books/:id/stock
 // @access  Private (Admin)
 export const updateStock = async (req, res) => {
   try {
-    const { stock } = req.body;
-    if (stock === undefined || isNaN(Number(stock)) || Number(stock) < 0) {
-      return res.status(400).json({ success: false, message: 'Please provide a valid non-negative stock count' });
-    }
-
-    const book = await Book.findByIdAndUpdate(
-      req.params.id,
-      { $set: { stock: Number(stock) } },
-      { new: true }
-    );
-
+    const book = await Book.findById(req.params.id);
     if (!book) {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
-
-    await logAction({
-      admin: req.admin,
-      action: 'UPDATE_STOCK',
-      targetType: 'Book',
-      targetId: book._id,
-      details: { title: book.title, newStock: Number(stock) },
-      req,
-    });
-
     res.json({
       success: true,
-      message: `Stock updated to ${book.stock}`,
+      message: 'Stock management is not required for digital instant downloads',
       book,
     });
   } catch (error) {
@@ -548,6 +516,21 @@ export const updateStock = async (req, res) => {
 // @access  Private (Admin)
 export const seedAdminBooks = async (req, res) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({
+        success: false,
+        message: 'Destructive catalog seeding is disabled in production',
+      });
+    }
+
+    const confirmHeader = req.headers['x-confirm-destructive'];
+    if (confirmHeader !== 'true' && req.body?.confirm !== true) {
+      return res.status(400).json({
+        success: false,
+        message: 'Destructive action requires confirmation. Provide x-confirm-destructive: true header or confirm: true in body',
+      });
+    }
+
     await Book.deleteMany({});
     const books = await Book.insertMany(sampleBooks);
 

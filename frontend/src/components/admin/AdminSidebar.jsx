@@ -1,10 +1,11 @@
 import React from 'react';
-import { BookOpen, Activity, Package, Settings, PlusCircle, Database } from 'lucide-react';
+import { BookOpen, Activity, Package, Settings, PlusCircle, Database, IndianRupee } from 'lucide-react';
 
 const AdminSidebar = ({ activeTab, setActiveTab, onOpenCreateModal, onSeedCatalog }) => {
   const navItems = [
     { id: 'books', label: 'Book Catalog', icon: BookOpen },
     { id: 'orders', label: 'Digital Orders & Sales', icon: Package },
+    { id: 'payments', label: 'Collected Payments', icon: IndianRupee },
     { id: 'activity', label: 'Activity Logs', icon: Activity },
     { id: 'system', label: 'System Health', icon: Settings },
   ];

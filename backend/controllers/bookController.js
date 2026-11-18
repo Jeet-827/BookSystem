@@ -9,13 +9,35 @@ export const getAllBooks = asyncHandler(async (req, res) => {
   const { search, category, minPrice, maxPrice, sort, page = 1, limit = 12 } = req.query;
   const query = {};
 
-  // Escaped regex search
+  // Smart regex search across title, description, author, category
   if (search && typeof search === 'string' && search.trim() !== '') {
-    const safeRegex = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    query.$or = [
+    const trimmed = search.trim();
+    const safeRegex = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const words = trimmed
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+    const searchConditions = [
       { title: { $regex: safeRegex, $options: 'i' } },
+      { description: { $regex: safeRegex, $options: 'i' } },
       { author: { $regex: safeRegex, $options: 'i' } },
+      { category: { $regex: safeRegex, $options: 'i' } },
     ];
+
+    if (words.length > 1) {
+      const wordClauses = words.map((w) => ({
+        $or: [
+          { title: { $regex: w, $options: 'i' } },
+          { description: { $regex: w, $options: 'i' } },
+          { author: { $regex: w, $options: 'i' } },
+          { category: { $regex: w, $options: 'i' } },
+        ],
+      }));
+      searchConditions.push({ $and: wordClauses });
+    }
+
+    query.$or = searchConditions;
   }
 
   // Category Filter
@@ -96,3 +118,51 @@ export const getBestsellers = asyncHandler(async (req, res) => {
   const books = await Book.find({ isBestseller: true }).select('-downloadUrl').limit(8).lean();
   res.json({ success: true, books });
 });
+
+// @desc    Smart instant preview search with regex across title, author, description, category
+// @route   GET /api/books/preview?q=...
+// @access  Public
+export const searchBooksPreview = asyncHandler(async (req, res) => {
+  const { q } = req.query;
+  if (!q || typeof q !== 'string' || q.trim() === '') {
+    return res.json({ success: true, count: 0, results: [] });
+  }
+
+  const trimmed = q.trim();
+  const safeRegex = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const words = trimmed
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+  const searchConditions = [
+    { title: { $regex: safeRegex, $options: 'i' } },
+    { description: { $regex: safeRegex, $options: 'i' } },
+    { author: { $regex: safeRegex, $options: 'i' } },
+    { category: { $regex: safeRegex, $options: 'i' } },
+  ];
+
+  if (words.length > 1) {
+    const wordClauses = words.map((w) => ({
+      $or: [
+        { title: { $regex: w, $options: 'i' } },
+        { description: { $regex: w, $options: 'i' } },
+        { author: { $regex: w, $options: 'i' } },
+        { category: { $regex: w, $options: 'i' } },
+      ],
+    }));
+    searchConditions.push({ $and: wordClauses });
+  }
+
+  const results = await Book.find({ $or: searchConditions })
+    .select('title author category price originalPrice image fileFormat fileSize description isFeatured isBestseller rating')
+    .limit(8)
+    .lean();
+
+  res.json({
+    success: true,
+    count: results.length,
+    results,
+  });
+});
+

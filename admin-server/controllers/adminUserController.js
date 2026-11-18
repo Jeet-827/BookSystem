@@ -1,5 +1,7 @@
 import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import { formatUser, sanitizeEmail, logAction } from '../utils/helpers.js';
+import { validateGenuineEmail } from '../utils/emailValidator.js';
 
 // @desc    Get all users with search, role filtering, pagination
 // @route   GET /api/admin/users
@@ -72,6 +74,12 @@ export const createAdminUser = async (req, res) => {
     }
 
     const safeEmail = sanitizeEmail(email);
+
+    const emailValidation = validateGenuineEmail(safeEmail);
+    if (!emailValidation.isValid) {
+      return res.status(400).json({ success: false, message: emailValidation.message });
+    }
+
     const existing = await User.findOne({ email: safeEmail });
     if (existing) {
       return res.status(409).json({ success: false, message: 'User with this email already exists' });
@@ -83,6 +91,18 @@ export const createAdminUser = async (req, res) => {
       password: String(password),
       role: role === 'admin' ? 'admin' : 'user',
     });
+
+    if (role === 'admin') {
+      const existingAdmin = await Admin.findOne({ email: safeEmail });
+      if (!existingAdmin) {
+        await Admin.create({
+          name: user.name,
+          email: user.email,
+          password: String(password),
+          role: 'admin',
+        });
+      }
+    }
 
     await logAction({
       admin: req.admin,

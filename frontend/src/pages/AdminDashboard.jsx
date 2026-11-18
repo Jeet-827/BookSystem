@@ -11,12 +11,14 @@ import AdminBookForm from '../components/admin/AdminBookForm';
 import AdminActivity from '../components/admin/AdminActivity';
 import AdminOrders from '../components/admin/AdminOrders';
 import AdminLogin from '../components/admin/AdminLogin';
+import ChangePasswordModal from '../components/admin/ChangePasswordModal';
+import MoonLoader from '../components/MoonLoader';
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
-  const { user, isAuthenticated, loading: authLoading } = useSelector((state) => state.auth);
+  const { user, isAuthenticated, sessionChecking, loading: authLoading } = useSelector((state) => state.auth);
 
-  const isAdmin = isAuthenticated && user && user.role === 'admin';
+  const isAdmin = isAuthenticated && user && (user.role === 'admin' || user.role === 'superadmin');
 
   // State
   const [activeTab, setActiveTab] = useState('books');
@@ -30,7 +32,6 @@ const AdminDashboard = () => {
   // Filters & Pagination
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
-  const [stockStatus, setStockStatus] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedBookIds, setSelectedBookIds] = useState([]);
@@ -39,6 +40,7 @@ const AdminDashboard = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   // Fetch Dashboard Overview Stats
   const fetchStats = useCallback(async () => {
@@ -61,7 +63,6 @@ const AdminDashboard = () => {
         limit: 10,
         search,
         category: category !== 'All' ? category : undefined,
-        stockStatus: stockStatus || undefined,
       };
       const res = await api.get('/admin/books', { params });
       if (res.data.success) {
@@ -73,7 +74,7 @@ const AdminDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, category, stockStatus]);
+  }, [page, search, category]);
 
   // Fetch Logs
   const fetchActivityLogs = useCallback(async () => {
@@ -107,7 +108,7 @@ const AdminDashboard = () => {
     setLoginError('');
     try {
       const result = await dispatch(loginUser(creds)).unwrap();
-      if (result.user?.role !== 'admin') {
+      if (result.user?.role !== 'admin' && result.user?.role !== 'superadmin') {
         setLoginError('Access denied: You do not have administrator privileges.');
         dispatch(logoutUser());
       }
@@ -156,7 +157,7 @@ const AdminDashboard = () => {
   const handleBulkDelete = async () => {
     if (
       window.confirm(
-        `Are you sure you want to delete ${selectedBookIds.length} selected books?`
+        `Are you sure you want to permanently delete ${selectedBookIds.length} books?`
       )
     ) {
       try {
@@ -165,7 +166,7 @@ const AdminDashboard = () => {
         fetchBooksData();
         fetchStats();
       } catch (err) {
-        alert(err.response?.data?.message || 'Error executing bulk delete');
+        alert(err.response?.data?.message || 'Error deleting books');
       }
     }
   };
@@ -183,16 +184,6 @@ const AdminDashboard = () => {
     try {
       await api.patch(`/admin/books/${id}/toggle-bestseller`);
       fetchBooksData();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleUpdateStock = async (id, stock) => {
-    try {
-      await api.patch(`/admin/books/${id}/stock`, { stock: Number(stock) });
-      fetchBooksData();
-      fetchStats();
     } catch (err) {
       console.error(err);
     }
@@ -229,6 +220,14 @@ const AdminDashboard = () => {
     );
   };
 
+  if (sessionChecking) {
+    return (
+      <div className="bg-[#0b0c0e] min-h-screen text-white flex items-center justify-center">
+        <MoonLoader size={48} color="#3b82f6" text="Verifying administrator session..." />
+      </div>
+    );
+  }
+
   if (!isAdmin) {
     return (
       <div className="bg-[#0b0c0e] min-h-screen text-white font-sans">
@@ -244,6 +243,7 @@ const AdminDashboard = () => {
         onLogout={handleLogout}
         onRefresh={handleRefresh}
         refreshing={refreshing}
+        onChangePassword={() => setIsChangePasswordOpen(true)}
       />
 
       <div className="flex-1 flex flex-col md:flex-row">
@@ -267,8 +267,6 @@ const AdminDashboard = () => {
                 setSearch={setSearch}
                 category={category}
                 setCategory={setCategory}
-                stockStatus={stockStatus}
-                setStockStatus={setStockStatus}
                 selectedCount={selectedBookIds.length}
                 onBulkDelete={handleBulkDelete}
               />
@@ -286,7 +284,6 @@ const AdminDashboard = () => {
                 onDeleteBook={handleDeleteBook}
                 onToggleFeatured={handleToggleFeatured}
                 onToggleBestseller={handleToggleBestseller}
-                onUpdateStock={handleUpdateStock}
               />
 
               {/* Pagination controls */}
@@ -295,18 +292,18 @@ const AdminDashboard = () => {
                   <span className="text-xs text-gray-500 font-bold">
                     Page {page} of {totalPages}
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex gap-2">
                     <button
                       disabled={page <= 1}
-                      onClick={() => setPage((p) => p - 1)}
-                      className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-bold disabled:opacity-40"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-gray-300 disabled:opacity-30 hover:bg-white/10 transition-colors"
                     >
                       Previous
                     </button>
                     <button
                       disabled={page >= totalPages}
-                      onClick={() => setPage((p) => p + 1)}
-                      className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-bold disabled:opacity-40"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-gray-300 disabled:opacity-30 hover:bg-white/10 transition-colors"
                     >
                       Next
                     </button>
@@ -316,7 +313,9 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {activeTab === 'orders' && <AdminOrders />}
+          {activeTab === 'orders' && <AdminOrders initialView="orders" />}
+
+          {activeTab === 'payments' && <AdminOrders initialView="payments" />}
 
           {activeTab === 'activity' && <AdminActivity logs={logs} loading={loading} />}
 
@@ -337,6 +336,11 @@ const AdminDashboard = () => {
         onClose={() => setIsFormOpen(false)}
         onSave={handleSaveBook}
         saving={saving}
+      />
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
       />
     </div>
   );

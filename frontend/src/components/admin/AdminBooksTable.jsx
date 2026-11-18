@@ -11,7 +11,6 @@ const AdminBooksTable = ({
   onDeleteBook,
   onToggleFeatured,
   onToggleBestseller,
-  onUpdateStock,
 }) => {
   if (loading && books.length === 0) {
     return (
@@ -48,7 +47,7 @@ const AdminBooksTable = ({
               <th className="py-3 px-4">Book Title</th>
               <th className="py-3 px-4">Category</th>
               <th className="py-3 px-4">Price</th>
-              <th className="py-3 px-4">Stock</th>
+              <th className="py-3 px-4">Format</th>
               <th className="py-3 px-4 text-center">Badges</th>
               <th className="py-3 px-4 text-right">Actions</th>
             </tr>
@@ -103,22 +102,13 @@ const AdminBooksTable = ({
                     )}
                   </td>
 
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="0"
-                        defaultValue={book.stock}
-                        onBlur={(e) => onUpdateStock(book._id, e.target.value)}
-                        className={`w-16 bg-black border px-2 py-1 rounded font-bold text-xs focus:outline-none ${
-                          book.stock === 0
-                            ? 'border-red-500 text-red-400'
-                            : book.stock <= 5
-                            ? 'border-amber-500 text-amber-400'
-                            : 'border-gray-700 text-emerald-400'
-                        }`}
-                      />
-                    </div>
+                  <td className="py-3 px-4 text-xs text-gray-300">
+                    <span className="font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded text-[11px]">
+                      {book.fileFormat || 'PDF'}
+                    </span>
+                    <span className="text-gray-500 text-[10px] block mt-0.5">
+                      {book.fileSize || '3.5 MB'}
+                    </span>
                   </td>
 
                   <td className="py-3 px-4 text-center">

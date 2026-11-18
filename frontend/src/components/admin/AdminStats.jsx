@@ -1,23 +1,23 @@
 import React from 'react';
-import { BookOpen, AlertTriangle, IndianRupee, Sparkles, Flame, Users } from 'lucide-react';
+import { BookOpen, IndianRupee, Sparkles, Users } from 'lucide-react';
 
 const AdminStats = ({ stats }) => {
   if (!stats) return null;
 
   const cards = [
     {
-      title: 'Total Inventory',
+      title: 'Digital Catalog',
       value: stats.books?.total || 0,
-      subtext: `${stats.books?.inStock || 0} in stock`,
+      subtext: `${stats.categories?.length || 0} active genres & categories`,
       icon: BookOpen,
       color: 'from-blue-500/20 to-blue-600/5 text-blue-400 border-blue-500/30',
     },
     {
-      title: 'Out of Stock',
-      value: stats.books?.outOfStock || 0,
-      subtext: 'Needs immediate restock',
-      icon: AlertTriangle,
-      color: 'from-red-500/20 to-red-600/5 text-red-400 border-red-500/30',
+      title: 'Platform Users',
+      value: stats.users?.total || 0,
+      subtext: `${stats.users?.admins || 1} administrator(s) configured`,
+      icon: Users,
+      color: 'from-purple-500/20 to-purple-600/5 text-purple-400 border-purple-500/30',
     },
     {
       title: 'Digital Sales Revenue',

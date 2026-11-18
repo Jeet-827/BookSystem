@@ -13,16 +13,30 @@ import adminBookRoutes from './routes/adminBookRoutes.js';
 import adminUserRoutes from './routes/adminUserRoutes.js';
 import adminSystemRoutes from './routes/adminSystemRoutes.js';
 import adminOrderRoutes from './routes/adminOrderRoutes.js';
+import adminUploadRoutes from './routes/adminUploadRoutes.js';
+import { handleOAuthCallback } from './controllers/adminUploadController.js';
+import Admin from './models/Admin.js';
+import querySanitizer from './middleware/querySanitizer.js';
+import cookieParser from 'cookie-parser';
+import { seedSampleOrdersIfEmpty } from './data/sampleOrders.js';
 import logger from './utils/logger.js';
 
 const app = express();
+app.set('trust proxy', 1);
 
-// --- Security Middleware ---
 
-// Helmet: Sets secure HTTP headers (XSS protection, clickjacking prevention, etc.)
+// --- Security Middleware & Query Protection ---
+
+// Helmet: Sets secure HTTP headers (XSS protection, clickjacking prevention, MIME sniff prevention)
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+    xContentTypeOptions: true,
+    xFrameOptions: { action: 'sameorigin' },
+    xXssProtection: true,
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    hidePoweredBy: true,
   })
 );
 
@@ -67,15 +81,15 @@ app.use(
   })
 );
 
-// Body Parsers
-app.use(express.json({ limit: '10kb' })); // Limit body size to prevent large payload attacks
-app.use(express.urlencoded({ extended: false }));
+// Body Parsers: Allow up to 50mb for book PDFs and ImageKit cover uploads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cookieParser());
 
-// NoSQL Injection Prevention: Strips $ and . from req.body, req.query, req.params
-app.use(mongoSanitize());
-
-// HTTP Parameter Pollution: Prevents duplicate query params
+// NoSQL Injection Prevention & Query Parameter Sanitization
+app.use(mongoSanitize({ replaceWith: '_' }));
 app.use(hpp());
+app.use(querySanitizer);
 
 // Rate Limiting: Prevent brute-force and DDoS attacks
 const apiLimiter = rateLimit({
@@ -95,9 +109,19 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Dedicated rate limiter for token refresh
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: { success: false, message: 'Too many token refresh attempts, please try again after 15 minutes' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use('/api', apiLimiter);
 app.use('/api/admin/auth/login', authLimiter);
 app.use('/api/admin/auth/register-admin', authLimiter);
+app.use('/api/admin/auth/refresh', refreshLimiter);
 
 // Cookie Parser Middleware with native fallback
 app.use((req, res, next) => {
@@ -122,6 +146,13 @@ app.use('/api/admin/books', adminBookRoutes);
 app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/admin/system', adminSystemRoutes);
 app.use('/api/admin/orders', adminOrderRoutes);
+app.use('/api/admin/upload', adminUploadRoutes);
+app.use('/api/admin/drive', adminUploadRoutes);
+app.use('/api/upload', adminUploadRoutes);
+app.use('/api/drive', adminUploadRoutes);
+
+// Google OAuth redirect callback (matches Google Cloud Console redirect URI)
+app.get('/api/v1/callback', handleOAuthCallback);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -182,7 +213,33 @@ const isTesting = process.env.NODE_ENV === 'test' || process.argv.some((arg) => 
 let server;
 
 if (!isTesting) {
-  connectDB();
+  connectDB().then(async () => {
+    try {
+      const email = process.env.ADMIN_DEFAULT_EMAIL || 'admin@bookmart.com';
+      const password = process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@2025Secure';
+      let admin = await Admin.findOne({ email });
+      if (!admin) {
+        await Admin.create({
+          name: 'System Administrator',
+          email,
+          password,
+          role: 'admin',
+          isActive: true,
+        });
+        logger.info(`[Admin Server] Default administrator created in Admin schema (${email}).`);
+      } else {
+        admin.password = password;
+        admin.isActive = true;
+        await admin.save();
+        logger.info(`[Admin Server] Administrator account synchronized with updated password (${email}).`);
+      }
+
+      // Auto-seed sample digital orders if database has no orders yet (powers sales revenue & orders tab)
+      await seedSampleOrdersIfEmpty();
+    } catch (seedErr) {
+      logger.error(`[Admin Server] Admin auto-sync notice: ${seedErr.message}`);
+    }
+  });
   const PORT = process.env.PORT || 5001;
   server = app.listen(PORT, '0.0.0.0', () => {
     logger.info(`BookMart ADMIN Server running on http://127.0.0.1:${PORT}`);

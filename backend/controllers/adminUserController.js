@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import { formatUser, sanitizeEmail, logAction } from '../utils/helpers.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -72,6 +73,18 @@ export const createAdminUser = asyncHandler(async (req, res) => {
     password: String(password),
     role: role === 'admin' ? 'admin' : 'user',
   });
+
+  if (role === 'admin') {
+    const existingAdmin = await Admin.findOne({ email: safeEmail });
+    if (!existingAdmin) {
+      await Admin.create({
+        name: user.name,
+        email: user.email,
+        password: String(password),
+        role: 'admin',
+      });
+    }
+  }
 
   await logAction({
     admin: req.user,

@@ -13,7 +13,7 @@ const cartSlice = createSlice({
       const existing = state.items.find((item) => item._id === book._id);
 
       if (existing) {
-        if (existing.quantity < (book.stock || 99)) {
+        if (existing.quantity < 99) {
           existing.quantity += 1;
         }
       } else {
@@ -25,7 +25,6 @@ const cartSlice = createSlice({
           originalPrice: book.originalPrice || book.price,
           image: book.image,
           category: book.category,
-          stock: book.stock || 10,
           downloadUrl:
             book.downloadUrl ||
             'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
@@ -48,7 +47,7 @@ const cartSlice = createSlice({
         if (quantity <= 0) {
           state.items = state.items.filter((i) => i._id !== id);
         } else {
-          item.quantity = Math.min(quantity, item.stock || 99);
+          item.quantity = Math.min(quantity, 99);
         }
       }
     },

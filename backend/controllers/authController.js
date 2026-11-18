@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import RefreshSession from '../models/RefreshSession.js';
 import {
   generateAccessToken,
@@ -10,6 +11,7 @@ import {
   REFRESH_SECRET,
 } from '../utils/generateTokens.js';
 import { formatUser, sanitizeEmail } from '../utils/helpers.js';
+import { validateGenuineEmail } from '../utils/emailValidator.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Helper to hash token string before storing in DB
@@ -22,8 +24,15 @@ export const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
   const safeEmail = sanitizeEmail(email);
 
+  // Validate Genuine Email (Defense in depth)
+  const emailValidation = validateGenuineEmail(safeEmail);
+  if (!emailValidation.isValid) {
+    return res.status(400).json({ success: false, message: emailValidation.message });
+  }
+
   const existingUser = await User.findOne({ email: safeEmail });
-  if (existingUser) {
+  const existingAdmin = await Admin.findOne({ email: safeEmail });
+  if (existingUser || existingAdmin) {
     return res.status(409).json({ success: false, message: 'User with this email already exists' });
   }
 
@@ -50,7 +59,6 @@ export const register = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: 'Account created successfully',
-    accessToken,
     user: formatUser(user),
   });
 });
@@ -62,6 +70,42 @@ export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const safeEmail = sanitizeEmail(email);
 
+  // 1. Check if user is an Administrator in Admin collection
+  let admin = await Admin.findOne({ email: safeEmail });
+  if (admin) {
+    const isMatch = await admin.comparePassword(String(password));
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
+    if (admin.isActive === false) {
+      return res.status(403).json({ success: false, message: 'Account is deactivated' });
+    }
+
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    const accessToken = generateAccessToken(admin._id);
+    const refreshToken = generateRefreshToken(admin._id);
+
+    await RefreshSession.create({
+      userId: admin._id,
+      tokenHash: hashToken(refreshToken),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      userAgent: req.headers['user-agent'] || '',
+      ipAddress: req.ip || req.socket.remoteAddress || '',
+    });
+
+    setCookies(res, accessToken, refreshToken);
+
+    return res.json({
+      success: true,
+      message: 'Admin login successful',
+      user: formatUser(admin),
+    });
+  }
+
+  // 2. Regular customer check in User collection
   const user = await User.findOne({ email: safeEmail });
   if (!user) {
     return res.status(401).json({ success: false, message: 'Invalid email or password' });
@@ -89,7 +133,6 @@ export const login = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'Login successful',
-    accessToken,
     user: formatUser(user),
   });
 });
@@ -98,7 +141,11 @@ export const login = asyncHandler(async (req, res) => {
 // @route   POST /api/auth/refresh
 // @access  Public
 export const refreshToken = asyncHandler(async (req, res) => {
-  const token = req.cookies?.refreshToken || req.body?.refreshToken;
+  const token =
+    req.cookies?.refreshToken ||
+    req.cookies?.adminRefreshToken ||
+    req.body?.refreshToken ||
+    req.headers['x-refresh-token'];
 
   if (!token) {
     return res.status(401).json({ success: false, message: 'No refresh token provided' });
@@ -108,27 +155,57 @@ export const refreshToken = asyncHandler(async (req, res) => {
     const decoded = jwt.verify(token, REFRESH_SECRET);
     const tokenHashed = hashToken(token);
 
-    // Verify active session exists and is not revoked
+    // Verify session has not been explicitly revoked
+    const revokedSession = await RefreshSession.findOne({
+      userId: decoded.id,
+      tokenHash: tokenHashed,
+      revokedAt: { $ne: null },
+    });
+
+    if (revokedSession) {
+      // 60-second concurrency grace period for rapid page reloads or parallel tab requests
+      const revokedTime = new Date(revokedSession.revokedAt).getTime();
+      const isWithinGrace = Date.now() - revokedTime < 60 * 1000;
+
+      if (!isWithinGrace) {
+        clearCookies(res);
+        return res.status(401).json({ success: false, message: 'Refresh session revoked' });
+      }
+
+      let user = await User.findById(decoded.id).select('-password');
+      if (!user) user = await Admin.findById(decoded.id).select('-password');
+
+      if (user) {
+        const newAccessToken = generateAccessToken(user._id);
+        setCookies(res, newAccessToken, token);
+        return res.json({
+          success: true,
+          user: formatUser(user),
+        });
+      }
+    }
+
+    let user = await User.findById(decoded.id).select('-password');
+    if (!user) {
+      user = await Admin.findById(decoded.id).select('-password');
+    }
+
+    if (!user) {
+      clearCookies(res);
+      return res.status(401).json({ success: false, message: 'User no longer exists' });
+    }
+
+    // Revoke old session if tracked
     const session = await RefreshSession.findOne({
       userId: decoded.id,
       tokenHash: tokenHashed,
       revokedAt: null,
     });
 
-    if (!session) {
-      clearCookies(res);
-      return res.status(401).json({ success: false, message: 'Refresh session revoked or invalid' });
+    if (session) {
+      session.revokedAt = new Date();
+      await session.save();
     }
-
-    const user = await User.findById(decoded.id).select('-password');
-    if (!user) {
-      clearCookies(res);
-      return res.status(401).json({ success: false, message: 'User no longer exists' });
-    }
-
-    // Revoke old session and issue new rotated refresh token
-    session.revokedAt = new Date();
-    await session.save();
 
     const newAccessToken = generateAccessToken(user._id);
     const newRefreshToken = generateRefreshToken(user._id);
@@ -145,7 +222,6 @@ export const refreshToken = asyncHandler(async (req, res) => {
 
     res.json({
       success: true,
-      accessToken: newAccessToken,
       user: formatUser(user),
     });
   } catch (error) {
@@ -172,4 +248,46 @@ export const logout = asyncHandler(async (req, res) => {
 // @access  Private
 export const getMe = asyncHandler(async (req, res) => {
   res.json({ success: true, user: formatUser(req.user) });
+});
+
+// @desc    Change user / admin password
+// @route   PUT /api/auth/change-password
+// @access  Private
+export const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+  const userId = req.user._id;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Current password and new password are required' });
+  }
+
+  if (confirmPassword && newPassword !== confirmPassword) {
+    return res.status(400).json({ success: false, message: 'New password and confirmation password do not match' });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long' });
+  }
+
+  let account = await Admin.findById(userId);
+  if (!account) {
+    account = await User.findById(userId);
+  }
+
+  if (!account) {
+    return res.status(404).json({ success: false, message: 'Account not found' });
+  }
+
+  const isMatch = await account.comparePassword(String(currentPassword));
+  if (!isMatch) {
+    return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+  }
+
+  account.password = String(newPassword);
+  await account.save();
+
+  res.json({
+    success: true,
+    message: 'Password changed successfully',
+  });
 });

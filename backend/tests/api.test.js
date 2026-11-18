@@ -70,15 +70,16 @@ describe('BookMart Customer & Admin Backend API Tests', () => {
     assert.equal(res.body.success, false);
   });
 
-  test('GET /api/admin/orders without admin auth returns 401 Unauthorized', async () => {
+  test('GET /api/admin/orders on customer backend is blocked by strict separation (403)', async () => {
     const res = await request(app).get('/api/admin/orders');
-    assert.equal(res.status, 401);
+    assert.equal(res.status, 403);
     assert.equal(res.body.success, false);
+    assert.ok(res.body.message.includes('port 5001'));
   });
 
-  test('GET /api/admin/orders/stats without admin auth returns 401 Unauthorized', async () => {
+  test('GET /api/admin/orders/stats on customer backend is blocked by strict separation (403)', async () => {
     const res = await request(app).get('/api/admin/orders/stats');
-    assert.equal(res.status, 401);
+    assert.equal(res.status, 403);
     assert.equal(res.body.success, false);
   });
 

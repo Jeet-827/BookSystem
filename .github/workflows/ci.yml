@@ -30,15 +30,20 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: frontend/package.json
+          cache-dependency-path: frontend/package-lock.json
 
+      # H-10 fix: use npm ci (respects lockfile, faster, reproducible)
       - name: Install Frontend Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run Frontend Tests (Vitest)
         run: npm test
 
       - name: Build Production Bundle (Vite)
+        env:
+          # Use safe placeholder values for CI build — no real secrets
+          VITE_API_BASE_URL: https://placeholder-backend.example.com
+          VITE_RAZORPAY_KEY_ID: rzp_test_placeholder_ci
         run: npm run build
 
       - name: Upload Build Artifacts
@@ -78,18 +83,25 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: backend/package.json
+          cache-dependency-path: backend/package-lock.json
 
+      # H-10 fix: npm ci enforces lockfile
       - name: Install Backend Dependencies
-        run: npm install
+        run: npm ci
+
+      # Dependency security audit (fail on high/critical vulnerabilities)
+      - name: Audit Backend Dependencies
+        run: npm audit --audit-level=high
+        continue-on-error: true  # report but don't block until baseline is clean
 
       - name: Run Backend API Tests
         env:
           NODE_ENV: test
           PORT: 5000
           MONGO_URI: mongodb://127.0.0.1:27017/bookmart_ci
-          JWT_SECRET: ci_secret_jwt_key_testing_12345
-          JWT_REFRESH_SECRET: ci_refresh_jwt_key_testing_67890
+          # CI-only test secrets (not real production secrets)
+          JWT_SECRET: ${{ secrets.CI_JWT_SECRET || 'ci_only_access_secret_not_used_in_production_64chars_padding' }}
+          JWT_REFRESH_SECRET: ${{ secrets.CI_JWT_REFRESH_SECRET || 'ci_only_refresh_secret_not_used_in_production_64chars_pad' }}
         run: npm test
 
   # ==========================================
@@ -122,18 +134,23 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-          cache-dependency-path: admin-server/package.json
+          cache-dependency-path: admin-server/package-lock.json
 
+      # H-10 fix: npm ci
       - name: Install Admin Server Dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Audit Admin Server Dependencies
+        run: npm audit --audit-level=high
+        continue-on-error: true
 
       - name: Run Admin Server Tests
         env:
           NODE_ENV: test
           PORT: 5001
           MONGO_URI: mongodb://127.0.0.1:27017/bookmart_ci
-          JWT_SECRET: ci_secret_jwt_key_testing_12345
-          JWT_REFRESH_SECRET: ci_refresh_jwt_key_testing_67890
-          ADMIN_DEFAULT_EMAIL: admin@bookmart.com
-          ADMIN_DEFAULT_PASSWORD: Admin@123456
+          JWT_SECRET: ${{ secrets.CI_JWT_SECRET || 'ci_only_access_secret_not_used_in_production_64chars_padding' }}
+          JWT_REFRESH_SECRET: ${{ secrets.CI_JWT_REFRESH_SECRET || 'ci_only_refresh_secret_not_used_in_production_64chars_pad' }}
+          ADMIN_DEFAULT_EMAIL: admin@bookmart-ci.test
+          ADMIN_DEFAULT_PASSWORD: CiOnlyPassword@TestNotProduction123
         run: npm test

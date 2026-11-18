@@ -32,7 +32,7 @@ import {
 const Orders = () => {
   const dispatch = useDispatch();
   const { orders, loading, error } = useSelector((state) => state.orders);
-  const { isAuthenticated } = useSelector((state) => state.auth);
+  const { isAuthenticated, sessionChecking } = useSelector((state) => state.auth);
 
   const [activeTab, setActiveTab] = useState('library'); // 'library' | 'orders'
   const [selectedOrderForRefund, setSelectedOrderForRefund] = useState(null);
@@ -107,6 +107,14 @@ const Orders = () => {
 
     return Array.from(booksMap.values());
   }, [orders]);
+
+  if (sessionChecking) {
+    return (
+      <div className="flex-1 min-h-[60vh] flex items-center justify-center">
+        <MoonLoader size={44} color="#000000" text="Restoring your library..." />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

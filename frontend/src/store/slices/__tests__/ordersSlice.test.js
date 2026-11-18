@@ -15,6 +15,9 @@ describe('ordersSlice reducers and actions', () => {
     error: null,
     lastPlacedOrder: null,
     paymentProcessing: false,
+    refundLoading: false,
+    refundError: null,
+    downloadLoading: false,
   };
 
   it('should return initial state when passed undefined', () => {

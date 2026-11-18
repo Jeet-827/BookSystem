@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import { ACCESS_SECRET } from '../utils/generateTokens.js';
 
 export const protect = async (req, res, next) => {
@@ -7,9 +8,7 @@ export const protect = async (req, res, next) => {
 
   if (req.cookies && req.cookies.accessToken) {
     token = req.cookies.accessToken;
-  }
-
-  else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization.split(' ')[1];
   }
 
@@ -19,10 +18,16 @@ export const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, ACCESS_SECRET);
-    req.user = await User.findById(decoded.id).select('-password');
-    if (!req.user) {
+    let user = await User.findById(decoded.id).select('-password');
+    if (!user) {
+      user = await Admin.findById(decoded.id).select('-password');
+    }
+
+    if (!user) {
       return res.status(401).json({ success: false, message: 'User not found' });
     }
+
+    req.user = user;
     next();
   } catch (error) {
     return res.status(401).json({
@@ -34,7 +39,7 @@ export const protect = async (req, res, next) => {
 };
 
 export const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
+  if (req.user && (req.user.role === 'admin' || req.user.role === 'superadmin')) {
     next();
   } else {
     res.status(403).json({ success: false, message: 'Access denied: Admins only' });

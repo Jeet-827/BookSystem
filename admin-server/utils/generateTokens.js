@@ -1,7 +1,18 @@
 import jwt from 'jsonwebtoken';
 
-export const ACCESS_SECRET = process.env.JWT_SECRET || 'bookmart_admin_secret_key_jwt_2024';
-export const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'bookmart_admin_refresh_secret_key_2024';
+const getSecret = (key, fallback) => {
+  const val = process.env[key];
+  if (!val) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`CRITICAL: Mandatory environment variable ${key} is not set in production!`);
+    }
+    return fallback;
+  }
+  return val;
+};
+
+export const ACCESS_SECRET = getSecret('JWT_SECRET', 'dev_admin_jwt_secret_change_me_in_env');
+export const REFRESH_SECRET = getSecret('JWT_REFRESH_SECRET', 'dev_admin_refresh_secret_change_me_in_env');
 
 export const generateAccessToken = (id, role = 'admin') => {
   return jwt.sign({ id, role }, ACCESS_SECRET, { expiresIn: '15m' });
@@ -19,6 +30,7 @@ export const setCookies = (res, accessToken, refreshToken) => {
     httpOnly: true,
     secure: isProd,
     sameSite,
+    path: '/',
     maxAge: 15 * 60 * 1000,
   });
 
@@ -26,6 +38,7 @@ export const setCookies = (res, accessToken, refreshToken) => {
     httpOnly: true,
     secure: isProd,
     sameSite,
+    path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
@@ -37,6 +50,7 @@ export const clearCookies = (res) => {
     httpOnly: true,
     secure: isProd,
     sameSite,
+    path: '/',
   };
   res.clearCookie('adminAccessToken', options);
   res.clearCookie('adminRefreshToken', options);

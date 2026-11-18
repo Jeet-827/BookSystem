@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import Admin from '../models/Admin.js';
 import User from '../models/User.js';
 import { ACCESS_SECRET } from '../utils/generateTokens.js';
 
@@ -22,24 +23,34 @@ export const protectAdmin = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, ACCESS_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
+    let admin = await Admin.findById(decoded.id).select('-password');
+    if (!admin) {
+      admin = await User.findById(decoded.id).select('-password');
+    }
 
-    if (!user) {
+    if (!admin) {
       return res.status(401).json({
         success: false,
         message: 'Admin account not found',
       });
     }
 
-    if (user.role !== 'admin') {
+    if (admin.role !== 'admin' && admin.role !== 'superadmin') {
       return res.status(403).json({
         success: false,
-        message: 'Forbidden: Requires admin privileges',
+        message: 'Forbidden: Requires administrator privileges',
       });
     }
 
-    req.user = user;
-    req.admin = user;
+    if (admin.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Admin account is deactivated',
+      });
+    }
+
+    req.user = admin;
+    req.admin = admin;
     next();
   } catch (error) {
     return res.status(401).json({

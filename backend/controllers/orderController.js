@@ -1,19 +1,14 @@
+import crypto from 'crypto';
 import Order from '../models/Order.js';
 import Book from '../models/Book.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import logger from '../utils/logger.js';
 
 // Generate unique order number
 const generateOrderNumber = () => {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.floor(1000 + Math.random() * 9000);
   return `BM-${timestamp}-${random}`;
-};
-
-// Generate fake transaction ID for payment simulation
-const generateTransactionId = (method) => {
-  const prefixes = { card: 'TXN', upi: 'UPI', netbanking: 'NB', wallet: 'WAL' };
-  const prefix = prefixes[method] || 'TXN';
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 };
 
 // Generate invoice number
@@ -23,172 +18,243 @@ const generateInvoiceNumber = () => {
   return `INV-${year}-${seq}`;
 };
 
-// @desc    Create order with payment simulation (Checkout)
-// @route   POST /api/orders
+// Verify Razorpay HMAC signature
+const verifyRazorpaySignature = (orderId, paymentId, signature) => {
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!keySecret) {
+    throw new Error('Razorpay key secret is not configured');
+  }
+  const body = `${orderId}|${paymentId}`;
+  const expected = crypto.createHmac('sha256', keySecret).update(body).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signature, 'hex'));
+};
+
+// COUPON_CODES — server-authoritative discount table.
+// Replace with a Coupon DB model when ready.
+const COUPON_TABLE = {
+  READMORE: { type: 'percent', value: 10 },
+  FIRST50:  { type: 'percent', value: 50 },
+  BOOK20:   { type: 'percent', value: 20 },
+};
+
+const applyCouponDiscount = (couponCode, subtotal) => {
+  if (!couponCode) return 0;
+  const coupon = COUPON_TABLE[couponCode.trim().toUpperCase()];
+  if (!coupon) return 0;
+  if (coupon.type === 'percent') {
+    return Math.round(subtotal * (coupon.value / 100));
+  }
+  return Math.min(coupon.value, subtotal);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Create a Razorpay order on the server (step 1 of payment)
+// @route   POST /api/orders/razorpay/create-order
 // @access  Private
-export const createOrder = asyncHandler(async (req, res) => {
-  const { items, paymentMethod, paymentDetails, couponCode } = req.body;
+// ─────────────────────────────────────────────────────────────────────────────
+export const createRazorpayOrder = asyncHandler(async (req, res) => {
+  const { items, couponCode } = req.body;
 
   if (!Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({
+    return res.status(400).json({ success: false, message: 'Cart items cannot be empty' });
+  }
+
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret) {
+    return res.status(503).json({
       success: false,
-      message: 'Order items cannot be empty',
+      message: 'Payment gateway is not configured on this server',
     });
   }
 
-  const validMethods = ['card', 'upi', 'netbanking', 'wallet'];
-  const method = validMethods.includes(paymentMethod) ? paymentMethod : 'card';
+  // Batch-fetch books (H-01 fix)
+  const bookIds = [...new Set(items.map((i) => i.bookId || i._id || i.book).filter(Boolean))];
+  const books = await Book.find({ _id: { $in: bookIds } }).lean();
+  const bookMap = new Map(books.map((b) => [String(b._id), b]));
 
-  // Validate payment details based on method
-  if (method === 'card') {
-    const cardNumber = paymentDetails?.cardNumber?.replace(/\s/g, '') || '';
-    if (cardNumber.length < 13 || cardNumber.length > 19) {
-      return res.status(400).json({ success: false, message: 'Invalid card number' });
+  let subtotal = 0;
+  for (const item of items) {
+    const bookId = String(item.bookId || item._id || item.book || '');
+    const book = bookMap.get(bookId);
+    if (!book) {
+      return res.status(404).json({ success: false, message: `Book not found (ID: ${bookId})` });
     }
-  } else if (method === 'upi') {
-    const upiId = paymentDetails?.upiId || '';
-    if (!upiId.includes('@')) {
-      return res.status(400).json({ success: false, message: 'Invalid UPI ID format (must contain @)' });
-    }
+    const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
+    subtotal += book.price * qty;
   }
+
+  const discount = applyCouponDiscount(couponCode, subtotal);
+  const totalAmount = Math.max(1, subtotal - discount); // Razorpay minimum 1 INR
+
+  const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+  const receipt = `rcpt_${Date.now()}`;
+
+  let rzpData;
+  try {
+    const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+      body: JSON.stringify({
+        amount: Math.round(totalAmount * 100), // paise
+        currency: 'INR',
+        receipt,
+      }),
+    });
+    rzpData = await rzpRes.json();
+
+    if (!rzpRes.ok || !rzpData.id) {
+      logger.error(`Razorpay order creation failed: ${JSON.stringify(rzpData)}`);
+      return res.status(502).json({ success: false, message: 'Failed to create payment order. Please try again.' });
+    }
+  } catch (err) {
+    logger.error(`Razorpay API error: ${err.message}`);
+    return res.status(502).json({ success: false, message: 'Payment gateway is temporarily unavailable.' });
+  }
+
+  // Return only the Razorpay order ID and public key — never the secret
+  return res.json({
+    success: true,
+    orderId: rzpData.id,
+    amount: rzpData.amount,
+    currency: rzpData.currency,
+    keyId, // public key — safe to send to browser
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Verify payment and create order (step 2 — called after Razorpay success callback)
+// @route   POST /api/orders
+// @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
+export const createOrder = asyncHandler(async (req, res) => {
+  const { items, paymentDetails, couponCode } = req.body;
+
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ success: false, message: 'Order items cannot be empty' });
+  }
+
+  // C-08 fix: Require and verify Razorpay signature before creating any order
+  const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentDetails || {};
+
+  if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+    return res.status(400).json({
+      success: false,
+      message: 'Payment verification details are required',
+    });
+  }
+
+  let signatureValid = false;
+  try {
+    signatureValid = verifyRazorpaySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+  } catch (err) {
+    logger.error(`Signature verification error: ${err.message}`);
+    return res.status(503).json({ success: false, message: 'Payment verification unavailable' });
+  }
+
+  if (!signatureValid) {
+    logger.warn(
+      `Invalid Razorpay signature for payment ${razorpay_payment_id} from user ${req.user._id}`
+    );
+    return res.status(400).json({ success: false, message: 'Payment verification failed. Please contact support.' });
+  }
+
+  // Batch-fetch books server-side (H-01 fix — never trust client prices)
+  const bookIds = [...new Set(items.map((i) => i.bookId || i._id || i.book).filter(Boolean))];
+  const books = await Book.find({ _id: { $in: bookIds } }).lean();
+  const bookMap = new Map(books.map((b) => [String(b._id), b]));
 
   const orderItems = [];
   let subtotal = 0;
 
-  // Validate books and stock server-side
   for (const item of items) {
-    const bookId = item.bookId || item._id || item.book;
-    const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
-
-    if (!bookId) {
-      return res.status(400).json({ success: false, message: 'Invalid item in checkout payload' });
-    }
-
-    const book = await Book.findById(bookId);
+    const bookId = String(item.bookId || item._id || item.book || '');
+    const book = bookMap.get(bookId);
     if (!book) {
       return res.status(404).json({ success: false, message: `Book not found (ID: ${bookId})` });
     }
 
-    if (book.stock < qty) {
-      return res.status(400).json({
-        success: false,
-        message: `Insufficient stock for "${book.title}". Available: ${book.stock}, Requested: ${qty}`,
-      });
-    }
-
-    const itemTotal = book.price * qty;
-    subtotal += itemTotal;
+    const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
+    subtotal += book.price * qty;
 
     orderItems.push({
       book: book._id,
       title: book.title,
       author: book.author,
       image: book.image || '',
-      price: book.price,
+      price: book.price,   // server-authoritative price
       quantity: qty,
+      // C-05 fix: store the actual key; never expose a public dummy fallback URL
       digitalFileKey: book.downloadUrl || '',
       fileFormat: book.fileFormat || 'PDF',
-      fileSize: book.fileSize || '4.2 MB',
+      fileSize: book.fileSize || 'N/A',
     });
   }
 
-  // Atomically decrement stock for each item
-  for (const item of orderItems) {
-    const updated = await Book.updateOne(
-      { _id: item.book, stock: { $gte: item.quantity } },
-      { $inc: { stock: -item.quantity } }
-    );
-    if (updated.modifiedCount === 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Stock conflict for "${item.title}". Please try again.`,
-      });
-    }
-  }
-
-  // Calculate discount
-  let discount = 0;
-  if (couponCode === 'READMORE') {
-    discount = Math.round(subtotal * 0.1); // 10% off
-  } else if (couponCode === 'FIRST50') {
-    discount = Math.round(subtotal * 0.5); // 50% off first order
-  } else if (couponCode === 'BOOK20') {
-    discount = Math.round(subtotal * 0.2); // 20% off
-  }
+  // Server-side coupon calculation
+  const discount = applyCouponDiscount(couponCode, subtotal);
   const totalAmount = Math.max(0, subtotal - discount);
 
-  // Simulate payment processing (all succeed for demo)
-  const transactionId = generateTransactionId(method);
   const orderNumber = generateOrderNumber();
   const invoiceNumber = generateInvoiceNumber();
-
-  // Build payment details to store
-  const storedPaymentDetails = {};
-  if (method === 'card') {
-    const cardNum = (paymentDetails?.cardNumber || '').replace(/\s/g, '');
-    storedPaymentDetails.cardLast4 = cardNum.slice(-4);
-    storedPaymentDetails.cardBrand = detectCardBrand(cardNum);
-  } else if (method === 'upi') {
-    storedPaymentDetails.upiId = paymentDetails?.upiId || '';
-  } else if (method === 'netbanking') {
-    storedPaymentDetails.bankName = paymentDetails?.bankName || 'HDFC Bank';
-  } else if (method === 'wallet') {
-    storedPaymentDetails.walletProvider = paymentDetails?.walletProvider || 'BookMart Wallet';
-  }
 
   const order = await Order.create({
     orderNumber,
     user: req.user._id,
     items: orderItems,
-    paymentMethod: method,
-    paymentDetails: storedPaymentDetails,
-    transactionId,
+    paymentMethod: 'razorpay',
+    paymentDetails: {
+      gateway: 'Razorpay',
+      razorpayPaymentId: razorpay_payment_id,
+      razorpayOrderId: razorpay_order_id,
+      // Store only a hash of the signature — never the raw sig
+      razorpaySignature: crypto.createHash('sha256').update(razorpay_signature).digest('hex'),
+    },
+    transactionId: razorpay_payment_id,
     subtotal,
     discount,
-    couponCode: couponCode || '',
+    couponCode: couponCode ? couponCode.trim().toUpperCase() : '',
     totalAmount,
-    paymentStatus: 'paid',
+    paymentStatus: 'paid',   // confirmed by verified signature above
     orderStatus: 'completed',
     refundStatus: 'none',
     paidAt: new Date(),
     invoiceNumber,
   });
 
+  // Return order but strip internal file keys from response
+  const safeOrder = order.toObject();
+  safeOrder.items = safeOrder.items.map(({ digitalFileKey, ...rest }) => rest);
+
   res.status(201).json({
     success: true,
-    message: 'Payment successful! Your ebooks are ready for download.',
-    order,
+    message: 'Payment verified. Your eBooks are ready for download.',
+    order: safeOrder,
   });
 });
 
-// Simple card brand detection
-function detectCardBrand(number) {
-  if (/^4/.test(number)) return 'Visa';
-  if (/^5[1-5]/.test(number)) return 'Mastercard';
-  if (/^3[47]/.test(number)) return 'Amex';
-  if (/^6(?:011|5)/.test(number)) return 'Discover';
-  if (/^35/.test(number)) return 'JCB';
-  if (/^(?:2131|1800)/.test(number)) return 'JCB';
-  return 'Card';
-}
-
+// ─────────────────────────────────────────────────────────────────────────────
 // @desc    Get logged-in user orders
 // @route   GET /api/orders
 // @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
 export const getUserOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
-  res.json({
-    success: true,
-    count: orders.length,
-    orders,
-  });
+  const orders = await Order.find({ user: req.user._id })
+    .sort({ createdAt: -1 })
+    .select('-items.digitalFileKey') // never expose storage keys in list
+    .lean();
+
+  res.json({ success: true, count: orders.length, orders });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // @desc    Get order details by ID
 // @route   GET /api/orders/:id
 // @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
 export const getOrderById = asyncHandler(async (req, res) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById(req.params.id).select('-items.digitalFileKey').lean();
 
   if (!order) {
     return res.status(404).json({ success: false, message: 'Order not found' });
@@ -201,9 +267,11 @@ export const getOrderById = asyncHandler(async (req, res) => {
   res.json({ success: true, order });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // @desc    Request refund for an order
 // @route   POST /api/orders/:id/refund
 // @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
 export const requestRefund = asyncHandler(async (req, res) => {
   const { reason } = req.body;
   const order = await Order.findById(req.params.id);
@@ -224,7 +292,6 @@ export const requestRefund = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: `Refund is already ${order.refundStatus}` });
   }
 
-  // Check 24-hour refund window
   const hoursSinceOrder = (Date.now() - new Date(order.createdAt).getTime()) / (1000 * 60 * 60);
   if (hoursSinceOrder > 24) {
     return res.status(400).json({
@@ -234,7 +301,7 @@ export const requestRefund = asyncHandler(async (req, res) => {
   }
 
   order.refundStatus = 'requested';
-  order.refundReason = reason ? String(reason).trim() : 'Customer requested refund';
+  order.refundReason = reason ? String(reason).trim().slice(0, 500) : 'Customer requested refund';
   order.refundAmount = order.totalAmount;
   order.refundRequestedAt = new Date();
   await order.save();
@@ -242,13 +309,15 @@ export const requestRefund = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'Refund request submitted successfully. Your refund will be processed within 24 hours.',
-    order,
+    order: { ...order.toObject(), items: order.items.map(({ digitalFileKey, ...rest }) => rest) },
   });
 });
 
-// @desc    Authorized digital download link generation
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Generate authorized download URL for a purchased item
 // @route   GET /api/orders/:orderId/items/:itemId/download
 // @access  Private
+// ─────────────────────────────────────────────────────────────────────────────
 export const downloadOrderItem = asyncHandler(async (req, res) => {
   const { orderId, itemId } = req.params;
   const order = await Order.findById(orderId);
@@ -266,41 +335,63 @@ export const downloadOrderItem = asyncHandler(async (req, res) => {
   }
 
   if (order.refundStatus === 'approved') {
-    return res.status(400).json({ success: false, message: 'Downloads unavailable for refunded orders' });
+    return res.status(403).json({ success: false, message: 'Downloads unavailable for refunded orders' });
   }
 
-  const item = order.items.id(itemId) || order.items.find((i) => String(i._id) === itemId || String(i.book) === itemId);
+  const item =
+    order.items.id(itemId) ||
+    order.items.find((i) => String(i._id) === itemId || String(i.book) === itemId);
 
   if (!item) {
     return res.status(404).json({ success: false, message: 'Item not found in order' });
   }
 
-  const downloadUrl = item.digitalFileKey || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+  // C-05 fix: no dummy PDF fallback. If no key is stored, return a 503.
+  if (!item.digitalFileKey) {
+    return res.status(503).json({
+      success: false,
+      message: 'Download file is not yet available for this item. Please contact support.',
+    });
+  }
 
+  // Return the stored key (Google Drive file ID or CDN URL).
+  // The client should use the /api/drive/download/:fileId proxy for Drive files,
+  // which now requires authentication (C-09 fix).
   res.json({
     success: true,
-    downloadUrl,
+    downloadUrl: item.digitalFileKey,
     title: item.title,
     fileFormat: item.fileFormat,
     fileSize: item.fileSize,
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // @desc    Get all orders (Admin)
 // @route   GET /api/admin/orders
 // @access  Private (Admin)
+// ─────────────────────────────────────────────────────────────────────────────
 export const getAllOrders = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, status, paymentStatus, search } = req.query;
   const query = {};
 
-  if (status && status !== 'all') query.orderStatus = status;
-  if (paymentStatus && paymentStatus !== 'all') query.paymentStatus = paymentStatus;
+  if (status === 'paid') {
+    query.paymentStatus = 'paid';
+  } else if (status && status !== 'all') {
+    query.orderStatus = status;
+  }
+
+  if (paymentStatus && paymentStatus !== 'all') {
+    query.paymentStatus = paymentStatus;
+  }
 
   if (search && typeof search === 'string' && search.trim()) {
     const safeSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     query.$or = [
       { orderNumber: { $regex: safeSearch, $options: 'i' } },
       { invoiceNumber: { $regex: safeSearch, $options: 'i' } },
+      { transactionId: { $regex: safeSearch, $options: 'i' } },
+      { 'paymentDetails.razorpayPaymentId': { $regex: safeSearch, $options: 'i' } },
     ];
   }
 
@@ -308,27 +399,43 @@ export const getAllOrders = asyncHandler(async (req, res) => {
   const perPage = Math.min(50, Math.max(1, Number(limit) || 20));
   const skip = (pageNum - 1) * perPage;
 
-  const [total, orders] = await Promise.all([
+  const [total, orders, collectedMetrics] = await Promise.all([
     Order.countDocuments(query),
     Order.find(query)
       .populate('user', 'name email')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(perPage),
+      .limit(perPage)
+      .select('-items.digitalFileKey')
+      .lean(),
+    Order.aggregate([
+      { $match: { paymentStatus: 'paid' } },
+      { $group: { _id: null, totalCollectedAmount: { $sum: '$totalAmount' }, paidCount: { $sum: 1 } } },
+    ]),
   ]);
 
   res.json({
     success: true,
     orders,
     currentPage: pageNum,
+    page: pageNum,
     totalPages: Math.ceil(total / perPage) || 1,
+    pages: Math.ceil(total / perPage) || 1,
     totalOrders: total,
+    total,
+    metrics: {
+      totalCollectedAmount: collectedMetrics[0]?.totalCollectedAmount || 0,
+      paidCount: collectedMetrics[0]?.paidCount || 0,
+      totalOrders: total,
+    },
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // @desc    Update order status (Admin)
 // @route   PUT /api/admin/orders/:id/status
 // @access  Private (Admin)
+// ─────────────────────────────────────────────────────────────────────────────
 export const updateOrderStatus = asyncHandler(async (req, res) => {
   const { orderStatus, paymentStatus } = req.body;
   const order = await Order.findById(req.params.id);
@@ -337,19 +444,24 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Order not found' });
   }
 
-  if (orderStatus) order.orderStatus = orderStatus;
-  if (paymentStatus) order.paymentStatus = paymentStatus;
+  const validOrderStatuses = ['processing', 'completed', 'cancelled', 'refunded'];
+  const validPaymentStatuses = ['pending', 'paid', 'failed', 'refunded'];
+
+  if (orderStatus && validOrderStatuses.includes(orderStatus)) order.orderStatus = orderStatus;
+  if (paymentStatus && validPaymentStatuses.includes(paymentStatus)) order.paymentStatus = paymentStatus;
 
   await order.save();
 
   res.json({ success: true, message: 'Order updated successfully', order });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // @desc    Process refund (Admin)
 // @route   PUT /api/admin/orders/:id/refund
 // @access  Private (Admin)
+// ─────────────────────────────────────────────────────────────────────────────
 export const processRefund = asyncHandler(async (req, res) => {
-  const { action } = req.body; // 'approve' or 'reject'
+  const { action } = req.body;
   const order = await Order.findById(req.params.id);
 
   if (!order) {
@@ -365,11 +477,8 @@ export const processRefund = asyncHandler(async (req, res) => {
     order.paymentStatus = 'refunded';
     order.orderStatus = 'refunded';
     order.refundProcessedAt = new Date();
-
-    // Restore stock for refunded items
-    for (const item of order.items) {
-      await Book.updateOne({ _id: item.book }, { $inc: { stock: item.quantity } });
-    }
+    // NOTE: Actual provider refund (Razorpay Refunds API) must be triggered here
+    // when live payment integration is completed.
   } else if (action === 'reject') {
     order.refundStatus = 'rejected';
     order.refundProcessedAt = new Date();
@@ -386,9 +495,11 @@ export const processRefund = asyncHandler(async (req, res) => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // @desc    Get order stats for dashboard (Admin)
 // @route   GET /api/admin/orders/stats
 // @access  Private (Admin)
+// ─────────────────────────────────────────────────────────────────────────────
 export const getOrderStats = asyncHandler(async (req, res) => {
   const [
     totalOrders,
@@ -413,6 +524,7 @@ export const getOrderStats = asyncHandler(async (req, res) => {
       .populate('user', 'name email')
       .sort({ createdAt: -1 })
       .limit(10)
+      .select('-items.digitalFileKey')
       .lean(),
     Order.aggregate([
       { $match: { paymentStatus: 'paid' } },

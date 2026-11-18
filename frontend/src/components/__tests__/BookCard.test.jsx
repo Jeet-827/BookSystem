@@ -38,7 +38,6 @@ describe('BookCard Component', () => {
     isBestseller: true,
     downloadUrl: 'https://example.com/sample.pdf',
     fileFormat: 'PDF',
-    stock: 25,
   };
 
   it('renders book details accurately', () => {

@@ -16,7 +16,6 @@ const sampleBook = {
   author: 'Robert C. Martin',
   price: 500,
   originalPrice: 800,
-  stock: 10,
   category: 'Technology',
   downloadUrl: 'https://example.com/clean-code.pdf',
   fileFormat: 'PDF',

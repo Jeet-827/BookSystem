@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { validateGenuineEmail } from '../utils/emailValidator.js';
 
 const userSchema = new mongoose.Schema(
   {
@@ -17,6 +18,13 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: [/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Please enter a valid email address'],
+      validate: {
+        validator: function (v) {
+          return validateGenuineEmail(v).isValid;
+        },
+        message: (props) =>
+          validateGenuineEmail(props.value).message || 'Please provide a genuine email address',
+      },
     },
     password: {
       type: String,

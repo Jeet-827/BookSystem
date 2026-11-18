@@ -32,7 +32,7 @@ describe('Navbar Component', () => {
   it('renders logo and navigation links', () => {
     renderNavbar();
 
-    expect(screen.getByText('BookMart')).toBeInTheDocument();
+    expect(screen.getByText(/redkitindia|BookMart/i)).toBeInTheDocument();
     expect(screen.getByText('Explore')).toBeInTheDocument();
     expect(screen.getAllByPlaceholderText(/search books, authors/i)[0]).toBeInTheDocument();
   });

@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import Admin from '../models/Admin.js';
 import User from '../models/User.js';
 import {
   generateAccessToken,
@@ -9,7 +10,7 @@ import {
 } from '../utils/generateTokens.js';
 import { formatUser, sanitizeEmail, logAction } from '../utils/helpers.js';
 
-// @desc    Admin login (requires role: 'admin')
+// @desc    Admin login (authenticates against Admin collection with adminSchema)
 // @route   POST /api/admin/auth/login
 // @access  Public
 export const adminLogin = async (req, res) => {
@@ -23,40 +24,59 @@ export const adminLogin = async (req, res) => {
     }
 
     const safeEmail = sanitizeEmail(email);
-    const user = await User.findOne({ email: safeEmail });
+    let admin = await Admin.findOne({ email: safeEmail });
 
-    if (!user) {
+    // Fallback migration: check if admin exists in legacy User model
+    if (!admin) {
+      const legacyUser = await User.findOne({ email: safeEmail, role: 'admin' });
+      if (legacyUser) {
+        const isMatch = await legacyUser.comparePassword(String(password));
+        if (isMatch) {
+          admin = await Admin.create({
+            name: legacyUser.name,
+            email: legacyUser.email,
+            password: String(password),
+            role: 'admin',
+          });
+        }
+      }
+    }
+
+    if (!admin) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials',
+        message: 'Invalid administrator credentials',
       });
     }
 
-    const isMatch = await user.comparePassword(String(password));
+    const isMatch = await admin.comparePassword(String(password));
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials',
+        message: 'Invalid administrator credentials',
       });
     }
 
-    if (user.role !== 'admin') {
+    if (admin.isActive === false) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied: You do not have administrator permissions',
+        message: 'Administrator account is deactivated. Contact system support.',
       });
     }
 
-    const accessToken = generateAccessToken(user._id, user.role);
-    const refreshToken = generateRefreshToken(user._id, user.role);
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    const accessToken = generateAccessToken(admin._id, admin.role || 'admin');
+    const refreshToken = generateRefreshToken(admin._id, admin.role || 'admin');
 
     setCookies(res, accessToken, refreshToken);
 
     await logAction({
-      admin: user,
+      admin,
       action: 'ADMIN_LOGIN',
       targetType: 'Auth',
-      details: { email: user.email },
+      details: { email: admin.email },
       req,
     });
 
@@ -64,7 +84,8 @@ export const adminLogin = async (req, res) => {
       success: true,
       message: 'Admin authentication successful',
       accessToken,
-      user: formatUser(user),
+      refreshToken,
+      user: formatUser(admin),
     });
   } catch (error) {
     res.status(500).json({
@@ -89,9 +110,12 @@ export const adminRefreshToken = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, REFRESH_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
+    let admin = await Admin.findById(decoded.id).select('-password');
+    if (!admin) {
+      admin = await User.findById(decoded.id).select('-password');
+    }
 
-    if (!user || user.role !== 'admin') {
+    if (!admin || (admin.role !== 'admin' && admin.role !== 'superadmin')) {
       clearCookies(res);
       return res.status(401).json({
         success: false,
@@ -99,15 +123,16 @@ export const adminRefreshToken = async (req, res) => {
       });
     }
 
-    const newAccessToken = generateAccessToken(user._id, user.role);
-    const newRefreshToken = generateRefreshToken(user._id, user.role);
+    const newAccessToken = generateAccessToken(admin._id, admin.role || 'admin');
+    const newRefreshToken = generateRefreshToken(admin._id, admin.role || 'admin');
 
     setCookies(res, newAccessToken, newRefreshToken);
 
     res.json({
       success: true,
       accessToken: newAccessToken,
-      user: formatUser(user),
+      refreshToken: newRefreshToken,
+      user: formatUser(admin),
     });
   } catch (error) {
     clearCookies(res);
@@ -135,8 +160,78 @@ export const adminLogout = async (req, res) => {
 export const getAdminProfile = async (req, res) => {
   res.json({
     success: true,
-    user: formatUser(req.user),
+    user: formatUser(req.admin || req.user),
   });
+};
+
+// @desc    Change admin password
+// @route   PUT /api/admin/auth/change-password
+// @access  Private (Admin)
+export const changeAdminPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const adminId = req.admin?._id || req.user?._id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required',
+      });
+    }
+
+    if (confirmPassword && newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password and confirmation password do not match',
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long',
+      });
+    }
+
+    let admin = await Admin.findById(adminId);
+    if (!admin) {
+      admin = await User.findById(adminId);
+    }
+
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin account not found' });
+    }
+
+    const isMatch = await admin.comparePassword(String(currentPassword));
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+    }
+
+    admin.password = String(newPassword);
+    await admin.save();
+
+    await logAction({
+      admin,
+      action: 'CHANGE_PASSWORD',
+      targetType: 'Admin',
+      targetId: admin._id,
+      details: { email: admin.email },
+      req,
+    });
+
+    res.json({
+      success: true,
+      message: 'Admin password updated successfully',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error changing admin password',
+    });
+  }
 };
 
 // @desc    Register a new admin (Protected or initial setup)
@@ -144,12 +239,11 @@ export const getAdminProfile = async (req, res) => {
 // @access  Public (if no admins exist) / Private (Admin only)
 export const registerAdmin = async (req, res) => {
   try {
-    const totalAdmins = await User.countDocuments({ role: 'admin' });
-    
+    const totalAdmins = await Admin.countDocuments();
+
     // If admins already exist and requester is not authenticated as admin, deny
     if (totalAdmins > 0) {
-      // Check if authenticated
-      if (!req.user || req.user.role !== 'admin') {
+      if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'superadmin')) {
         return res.status(403).json({
           success: false,
           message: 'Only existing administrators can create new admin accounts',
@@ -166,15 +260,15 @@ export const registerAdmin = async (req, res) => {
     }
 
     const safeEmail = sanitizeEmail(email);
-    const existing = await User.findOne({ email: safeEmail });
+    const existing = await Admin.findOne({ email: safeEmail });
     if (existing) {
       return res.status(409).json({
         success: false,
-        message: 'User with this email already exists',
+        message: 'Administrator with this email already exists',
       });
     }
 
-    const admin = await User.create({
+    const admin = await Admin.create({
       name: String(name).trim(),
       email: safeEmail,
       password: String(password),
@@ -189,7 +283,7 @@ export const registerAdmin = async (req, res) => {
       await logAction({
         admin: req.user,
         action: 'CREATE_ADMIN',
-        targetType: 'User',
+        targetType: 'Admin',
         targetId: admin._id,
         details: { newAdminEmail: admin.email },
         req,

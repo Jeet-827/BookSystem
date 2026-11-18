@@ -20,7 +20,7 @@ npm run seed:admin
 ```
 > **Default Admin Credentials:**
 > - **Email:** `admin@bookmart.com`
-> - **Password:** `Admin@123456`
+> - **Password:** `Admin@2025Secure`
 
 ### 3. Start Development Server
 ```bash

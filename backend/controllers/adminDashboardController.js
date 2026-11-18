@@ -1,5 +1,6 @@
 import Book from '../models/Book.js';
 import User from '../models/User.js';
+import Admin from '../models/Admin.js';
 import Order from '../models/Order.js';
 import AdminLog from '../models/AdminLog.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -12,7 +13,6 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     totalBooks,
     totalUsers,
     totalAdmins,
-    outOfStockBooks,
     featuredBooksCount,
     bestsellerBooksCount,
     categoryStats,
@@ -25,8 +25,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   ] = await Promise.all([
     Book.countDocuments(),
     User.countDocuments(),
-    User.countDocuments({ role: 'admin' }),
-    Book.countDocuments({ stock: { $lte: 0 } }),
+    Admin.countDocuments(),
     Book.countDocuments({ isFeatured: true }),
     Book.countDocuments({ isBestseller: true }),
     Book.aggregate([
@@ -35,7 +34,6 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
           _id: '$category',
           count: { $sum: 1 },
           avgPrice: { $avg: '$price' },
-          totalStock: { $sum: '$stock' },
         },
       },
       { $sort: { count: -1 } },
@@ -47,11 +45,11 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
           minPrice: { $min: '$price' },
           maxPrice: { $max: '$price' },
           avgPrice: { $avg: '$price' },
-          totalInventoryValue: { $sum: { $multiply: ['$price', '$stock'] } },
+          totalCatalogValue: { $sum: '$price' },
         },
       },
     ]),
-    Book.find().sort({ createdAt: -1 }).limit(5).select('title author price category stock image createdAt'),
+    Book.find().sort({ createdAt: -1 }).limit(5).select('title author price category image createdAt'),
     User.find().sort({ createdAt: -1 }).limit(5).select('name email role createdAt'),
     Order.countDocuments(),
     Order.aggregate([
@@ -64,8 +62,6 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   const overview = {
     books: {
       total: totalBooks,
-      outOfStock: outOfStockBooks,
-      inStock: Math.max(0, totalBooks - outOfStockBooks),
       featured: featuredBooksCount,
       bestsellers: bestsellerBooksCount,
     },
@@ -81,7 +77,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     },
     financials: {
       totalRevenue: orderRevenue[0]?.total || 0,
-      totalInventoryValue: priceStats[0]?.totalInventoryValue || 0,
+      totalCatalogValue: priceStats[0]?.totalCatalogValue || 0,
       averageBookPrice: Math.round(priceStats[0]?.avgPrice || 0),
       minPrice: priceStats[0]?.minPrice || 0,
       maxPrice: priceStats[0]?.maxPrice || 0,
@@ -90,7 +86,6 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       category: c._id || 'Uncategorized',
       count: c.count,
       avgPrice: Math.round(c.avgPrice || 0),
-      totalStock: c.totalStock || 0,
     })),
     recentBooks,
     recentUsers,

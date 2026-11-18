@@ -12,7 +12,7 @@ export const getAdminBooks = asyncHandler(async (req, res) => {
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
   const skip = (page - 1) * limit;
 
-  const { search, category, stockStatus, isFeatured, isBestseller, sortBy, sortOrder } = req.query;
+  const { search, category, isFeatured, isBestseller, sortBy, sortOrder } = req.query;
 
   const query = {};
 
@@ -29,12 +29,6 @@ export const getAdminBooks = asyncHandler(async (req, res) => {
     query.category = category;
   }
 
-  if (stockStatus) {
-    if (stockStatus === 'in-stock') query.stock = { $gt: 5 };
-    else if (stockStatus === 'low-stock') query.stock = { $gt: 0, $lte: 5 };
-    else if (stockStatus === 'out-of-stock') query.stock = 0;
-  }
-
   if (isFeatured !== undefined && isFeatured !== '') {
     query.isFeatured = isFeatured === 'true';
   }
@@ -43,8 +37,10 @@ export const getAdminBooks = asyncHandler(async (req, res) => {
     query.isBestseller = isBestseller === 'true';
   }
 
+  // H-08 fix: whitelist sortable fields to prevent MongoDB key injection
+  const SORTABLE_FIELDS = ['title', 'author', 'price', 'rating', 'createdAt', 'publishedYear'];
   let sort = { createdAt: -1 };
-  if (sortBy) {
+  if (sortBy && SORTABLE_FIELDS.includes(sortBy)) {
     const order = sortOrder === 'asc' ? 1 : -1;
     sort = { [sortBy]: order };
   }
@@ -90,7 +86,6 @@ export const createAdminBook = asyncHandler(async (req, res) => {
     fileFormat,
     fileSize,
     category,
-    stock,
     isbn,
     language,
     pages,
@@ -101,33 +96,44 @@ export const createAdminBook = asyncHandler(async (req, res) => {
     rating,
   } = req.body;
 
-  if (!title || !author || !description || price === undefined || originalPrice === undefined || !category) {
+  if (!title || !author || price === undefined || price === null || price === '') {
     return res.status(400).json({
       success: false,
-      message: 'Please provide all required fields: title, author, description, price, originalPrice, category',
+      message: 'Please provide at least title, author, and price to create a book.',
     });
   }
+
+  const numericPrice = Number(price);
+  const numericOriginalPrice =
+    originalPrice !== undefined && originalPrice !== '' && !isNaN(Number(originalPrice))
+      ? Number(originalPrice)
+      : numericPrice;
+
+  const defaultDesc = `${String(title).trim()} by ${String(author).trim()}. Premium digital eBook edition available for instant download on redkitindia.`;
 
   const book = await Book.create({
     title: String(title).trim(),
     author: String(author).trim(),
-    description: String(description).trim(),
-    price: Number(price),
-    originalPrice: Number(originalPrice),
-    image: image || '',
-    downloadUrl: downloadUrl || '',
+    description: description && String(description).trim() ? String(description).trim() : defaultDesc,
+    price: numericPrice,
+    originalPrice: numericOriginalPrice,
+    image:
+      image ||
+      'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=400',
+    downloadUrl:
+      downloadUrl ||
+      'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
     fileFormat: fileFormat || 'PDF',
-    fileSize: fileSize || '3.5 MB',
-    category: String(category).trim(),
-    stock: stock !== undefined ? Number(stock) : 10,
+    fileSize: fileSize || '4.2 MB',
+    category: category && String(category).trim() ? String(category).trim() : 'Fiction',
     isbn: isbn ? String(isbn).trim() : '',
     language: language || 'English',
-    pages: pages ? Number(pages) : undefined,
-    publisher: publisher ? String(publisher).trim() : undefined,
-    publishedYear: publishedYear ? Number(publishedYear) : undefined,
+    pages: pages ? Number(pages) : 250,
+    publisher: publisher ? String(publisher).trim() : 'redkitindia Publishing',
+    publishedYear: publishedYear ? Number(publishedYear) : new Date().getFullYear(),
     isFeatured: Boolean(isFeatured),
     isBestseller: Boolean(isBestseller),
-    rating: rating ? Number(rating) : 4.0,
+    rating: rating ? Number(rating) : 4.5,
   });
 
   await logAction({
@@ -166,7 +172,6 @@ export const updateAdminBook = asyncHandler(async (req, res) => {
     'fileFormat',
     'fileSize',
     'category',
-    'stock',
     'isbn',
     'language',
     'pages',
@@ -320,45 +325,37 @@ export const toggleBestseller = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Quick update stock count
+// @desc    Quick update stock count (no-op for digital books)
 // @route   PATCH /api/admin/books/:id/stock
 // @access  Private (Admin)
 export const updateStock = asyncHandler(async (req, res) => {
-  const { stock } = req.body;
-  if (stock === undefined || isNaN(Number(stock)) || Number(stock) < 0) {
-    return res.status(400).json({ success: false, message: 'Please provide a valid non-negative stock count' });
-  }
-
-  const book = await Book.findByIdAndUpdate(
-    req.params.id,
-    { $set: { stock: Number(stock) } },
-    { new: true }
-  );
-
+  const book = await Book.findById(req.params.id);
   if (!book) {
     return res.status(404).json({ success: false, message: 'Book not found' });
   }
 
-  await logAction({
-    admin: req.user,
-    action: 'UPDATE_STOCK',
-    details: { title: book.title, newStock: Number(stock) },
-    req,
-  });
-
-  cache.clear();
-
   res.json({
     success: true,
-    message: `Stock updated to ${book.stock}`,
+    message: 'Stock management is not required for digital instant downloads',
     book,
   });
 });
 
 // @desc    Seed / Reset Catalog in Database
 // @route   POST /api/admin/books/seed
-// @access  Private (Admin)
+// @access  Private (Admin) — requires explicit destructive-action confirmation header
 export const seedAdminBooks = asyncHandler(async (req, res) => {
+  // H-09 fix: require an explicit confirmation header to prevent accidental wipes
+  const confirmation = req.headers['x-confirm-destructive'];
+  if (confirmation !== 'YES_DELETE_ALL_BOOKS') {
+    return res.status(400).json({
+      success: false,
+      message:
+        'Destructive operation requires confirmation header: ' +
+        'x-confirm-destructive: YES_DELETE_ALL_BOOKS',
+    });
+  }
+
   await Book.deleteMany({});
   const books = await Book.insertMany(sampleBooks);
 

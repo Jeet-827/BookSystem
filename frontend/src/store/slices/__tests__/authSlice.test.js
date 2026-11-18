@@ -27,7 +27,7 @@ describe('authSlice reducer', () => {
   });
 
   it('should set user and isAuthenticated on loginUser.fulfilled', () => {
-    const mockUser = { id: 'u1', name: 'John Doe', email: 'john@example.com' };
+    const mockUser = { id: 'u1', name: 'John Doe', email: 'john@gmail.com' };
     const nextState = authReducer(initialAuthState, {
       type: loginUser.fulfilled.type,
       payload: { user: mockUser },

@@ -1,13 +1,24 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api, { setAccessToken } from '../../api/axios';
+import api, {
+  setAccessToken,
+  setFallbackRefreshToken,
+  getFallbackRefreshToken,
+} from '../../api/axios';
 
-// Async Thunk: Register (Sets HTTP-Only cookies automatically)
+export { setFallbackRefreshToken, getFallbackRefreshToken };
+
+// Async Thunk: Register (Sets HTTP-Only cookies automatically + stores token in memory/session)
 export const registerUser = createAsyncThunk(
   'auth/register',
   async (userData, { rejectWithValue }) => {
     try {
       const response = await api.post('/auth/register', userData);
-      setAccessToken(response.data.accessToken);
+      if (response.data.accessToken) {
+        setAccessToken(response.data.accessToken);
+      }
+      if (response.data.refreshToken) {
+        setFallbackRefreshToken(response.data.refreshToken);
+      }
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Registration failed');
@@ -15,13 +26,18 @@ export const registerUser = createAsyncThunk(
   }
 );
 
-// Async Thunk: Login (Sets HTTP-Only cookies automatically)
+// Async Thunk: Login (Sets HTTP-Only cookies automatically + stores token in memory/session)
 export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await api.post('/auth/login', credentials);
-      setAccessToken(response.data.accessToken);
+      if (response.data.accessToken) {
+        setAccessToken(response.data.accessToken);
+      }
+      if (response.data.refreshToken) {
+        setFallbackRefreshToken(response.data.refreshToken);
+      }
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Invalid credentials');
@@ -29,32 +45,53 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-// Async Thunk: Check/Refresh Session from HTTP-Only Cookie on App Load
+// Async Thunk: Check/Refresh Session from HTTP-Only Cookie or Fallback on App Load / Reload
+// On every reload this API call exchanges the refresh token (via HTTP-only cookie or
+// session fallback header/body) for a freshly minted access token and user profile.
+// Strict compliance: Never touches localStorage.
 export const checkAuthSession = createAsyncThunk(
   'auth/checkAuthSession',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/refresh');
-      setAccessToken(response.data.accessToken);
+      const rf = getFallbackRefreshToken();
+      const payload = rf ? { refreshToken: rf } : {};
+      const headers = rf ? { 'x-refresh-token': rf } : {};
+
+      const response = await api.post('/auth/refresh', payload, { headers });
+      if (response.data.accessToken) {
+        setAccessToken(response.data.accessToken);
+      }
+      if (response.data.refreshToken) {
+        setFallbackRefreshToken(response.data.refreshToken);
+      }
       return response.data;
     } catch (err) {
+      setAccessToken(null);
+      setFallbackRefreshToken(null);
+      if (err.response?.status === 401) {
+        return rejectWithValue('Session expired');
+      }
       return rejectWithValue('No active session');
     }
   }
 );
 
-// Async Thunk: Logout (Destroys HTTP-Only cookies on server)
+// Async Thunk: Logout (Destroys HTTP-Only cookies on server + wipes tokens)
 export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
   async (_, { rejectWithValue }) => {
     try {
-      await api.post('/auth/logout');
-      setAccessToken(null);
-      return null;
+      const rf = getFallbackRefreshToken();
+      const payload = rf ? { refreshToken: rf } : {};
+      const headers = rf ? { 'x-refresh-token': rf } : {};
+      await api.post('/auth/logout', payload, { headers });
     } catch (err) {
+      // Continue cleanup regardless of server response
+    } finally {
       setAccessToken(null);
-      return null;
+      setFallbackRefreshToken(null);
     }
+    return null;
   }
 );
 
@@ -62,7 +99,7 @@ const initialState = {
   user: null,
   isAuthenticated: false,
   loading: false,
-  sessionChecking: true,
+  sessionChecking: true, // Always true initially — resolved by checkAuthSession
   error: null,
 };
 
@@ -110,8 +147,10 @@ const authSlice = createSlice({
       })
       .addCase(checkAuthSession.fulfilled, (state, action) => {
         state.sessionChecking = false;
-        state.user = action.payload.user;
-        state.isAuthenticated = true;
+        if (action.payload?.user) {
+          state.user = action.payload.user;
+          state.isAuthenticated = true;
+        }
       })
       .addCase(checkAuthSession.rejected, (state) => {
         state.sessionChecking = false;

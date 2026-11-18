@@ -6,10 +6,18 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 // @route   GET /api/admin/orders
 // @access  Private (Admin)
 export const getAllOrders = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, status, search } = req.query;
+  const { page = 1, limit = 20, status, paymentStatus, search } = req.query;
   const query = {};
 
-  if (status && status !== 'all') query.orderStatus = status;
+  if (status === 'paid') {
+    query.paymentStatus = 'paid';
+  } else if (status && status !== 'all') {
+    query.orderStatus = status;
+  }
+
+  if (paymentStatus && paymentStatus !== 'all') {
+    query.paymentStatus = paymentStatus;
+  }
 
   if (search && typeof search === 'string' && search.trim()) {
     const safeSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -17,6 +25,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
       { orderNumber: { $regex: safeSearch, $options: 'i' } },
       { transactionId: { $regex: safeSearch, $options: 'i' } },
       { invoiceNumber: { $regex: safeSearch, $options: 'i' } },
+      { 'paymentDetails.razorpayPaymentId': { $regex: safeSearch, $options: 'i' } },
     ];
   }
 
@@ -24,7 +33,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
   const skip = (pageNum - 1) * limitNum;
 
-  const [total, orders] = await Promise.all([
+  const [total, orders, collectedMetrics] = await Promise.all([
     Order.countDocuments(query),
     Order.find(query)
       .populate('user', 'name email')
@@ -32,14 +41,32 @@ export const getAllOrders = asyncHandler(async (req, res) => {
       .skip(skip)
       .limit(limitNum)
       .lean(),
+    Order.aggregate([
+      { $match: { paymentStatus: 'paid' } },
+      {
+        $group: {
+          _id: null,
+          totalCollectedAmount: { $sum: '$totalAmount' },
+          paidCount: { $sum: 1 },
+        },
+      },
+    ]),
   ]);
 
   res.json({
     success: true,
     orders,
     page: pageNum,
+    currentPage: pageNum,
     pages: Math.ceil(total / limitNum) || 1,
+    totalPages: Math.ceil(total / limitNum) || 1,
     total,
+    totalOrders: total,
+    metrics: {
+      totalCollectedAmount: collectedMetrics[0]?.totalCollectedAmount || 0,
+      paidCount: collectedMetrics[0]?.paidCount || 0,
+      totalOrders: total,
+    },
   });
 });
 
@@ -91,10 +118,6 @@ export const processRefund = asyncHandler(async (req, res) => {
     order.paymentStatus = 'refunded';
     order.orderStatus = 'refunded';
     order.refundProcessedAt = new Date();
-
-    for (const item of order.items) {
-      await Book.updateOne({ _id: item.book }, { $inc: { stock: item.quantity } });
-    }
   } else if (action === 'reject') {
     order.refundStatus = 'rejected';
     order.refundProcessedAt = new Date();

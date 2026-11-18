@@ -69,11 +69,6 @@ const bookSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    stock: {
-      type: Number,
-      default: 10,
-      min: 0,
-    },
     isbn: {
       type: String,
       trim: true,

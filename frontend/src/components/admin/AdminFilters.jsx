@@ -7,8 +7,6 @@ const AdminFilters = ({
   setSearch,
   category,
   setCategory,
-  stockStatus,
-  setStockStatus,
   selectedCount,
   onBulkDelete,
 }) => {
@@ -42,18 +40,6 @@ const AdminFilters = ({
             ))}
           </select>
         </div>
-
-        {/* Stock Filter */}
-        <select
-          value={stockStatus}
-          onChange={(e) => setStockStatus(e.target.value)}
-          className="bg-black border border-gray-800 text-gray-300 px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-amber-500 font-bold"
-        >
-          <option value="">All Stock Levels</option>
-          <option value="in-stock">In Stock (&gt;5)</option>
-          <option value="low-stock">Low Stock (1-5)</option>
-          <option value="out-of-stock">Out of Stock (0)</option>
-        </select>
       </div>
 
       {/* Bulk Delete Action */}

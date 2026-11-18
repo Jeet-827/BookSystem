@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy } from 'react';
+import React, { useLayoutEffect, Suspense, lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { checkAuthSession } from './store/slices/authSlice';
@@ -27,8 +27,10 @@ const PageSuspenseFallback = () => (
 function App() {
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    // Check session from secure HTTP-only cookies on startup
+  // useLayoutEffect runs synchronously before the browser paints,
+  // ensuring the refresh-token → access-token exchange starts
+  // before any child component renders, preventing auth flicker.
+  useLayoutEffect(() => {
     dispatch(checkAuthSession());
   }, [dispatch]);
 

@@ -5,6 +5,7 @@ import {
   getOrderById,
   requestRefund,
   downloadOrderItem,
+  createRazorpayOrder,
 } from '../controllers/orderController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -12,6 +13,7 @@ const router = express.Router();
 
 router.use(protect);
 
+router.post('/razorpay/create-order', createRazorpayOrder);
 router.post('/', createOrder);
 router.get('/', getUserOrders);
 router.get('/:id', getOrderById);

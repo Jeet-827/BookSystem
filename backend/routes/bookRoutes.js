@@ -4,10 +4,12 @@ import {
   getBookById,
   getFeaturedBooks,
   getBestsellers,
+  searchBooksPreview,
 } from '../controllers/bookController.js';
 
 const router = express.Router();
 
+router.get('/preview', searchBooksPreview);
 router.get('/', getAllBooks);
 router.get('/featured', getFeaturedBooks);
 router.get('/bestsellers', getBestsellers);

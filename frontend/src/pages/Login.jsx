@@ -20,7 +20,17 @@ const Login = () => {
   useEffect(() => {
     dispatch(clearAuthError());
     if (isAuthenticated) {
-      navigate(redirect === 'cart' ? '/cart' : '/');
+      if (redirect === 'checkout') {
+        navigate('/checkout');
+      } else if (redirect === 'cart') {
+        navigate('/cart');
+      } else if (redirect && redirect.startsWith('/')) {
+        navigate(redirect);
+      } else if (redirect && redirect !== '/') {
+        navigate(`/${redirect}`);
+      } else {
+        navigate('/');
+      }
     }
   }, [isAuthenticated, navigate, redirect, dispatch]);
 
@@ -44,9 +54,16 @@ const Login = () => {
             Welcome Back
           </h1>
           <p className="text-xs text-gray-500">
-            Sign in to access your BookMart account & digital downloads
+            Sign in to access your redkitindia account &amp; digital downloads
           </p>
         </div>
+
+        {redirect === 'checkout' && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-lg flex items-center gap-2 font-medium">
+            <Lock size={15} className="text-amber-600 flex-shrink-0" />
+            <span>Please log in to your account to complete your payment and unlock downloads.</span>
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg flex items-center gap-2 font-medium">

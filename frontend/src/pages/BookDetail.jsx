@@ -209,11 +209,7 @@ const BookDetail = () => {
             </div>
 
             <div className="text-xs font-bold">
-              {book.stock > 0 ? (
-                <span className="text-emerald-700">✔ In Stock ({book.stock} copies left)</span>
-              ) : (
-                <span className="text-red-600">✖ Currently Out of Stock</span>
-              )}
+              <span className="text-emerald-700">✔ Instant Digital Download &amp; Read Anytime</span>
             </div>
           </div>
 
