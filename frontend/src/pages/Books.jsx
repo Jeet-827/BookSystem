@@ -5,6 +5,7 @@ import { fetchBooks, setFilter, resetFilters } from '../store/slices/booksSlice'
 import BookCard from '../components/BookCard';
 import MoonLoader from '../components/MoonLoader';
 import { SlidersHorizontal, RotateCcw, X, Filter } from 'lucide-react';
+import SEOHead from '../components/SEOHead';
 
 const CATEGORIES = [
   'All',
@@ -200,7 +201,29 @@ const Books = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 min-h-[calc(100vh-140px)]">
+    <>
+      <SEOHead
+        title="Browse eBooks – Fiction, Technology, Self-Help & More"
+        description="Browse 10,000+ digital eBooks on redkitindia. Instant download PDF & EPUB books across Fiction, Technology, Self-Help, History, Science and more. DRM-free, read offline."
+        canonical="/books"
+        ogType="website"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          "@id": "https://www.redkitindia.com/books#webpage",
+          "url": "https://www.redkitindia.com/books",
+          "name": "Browse eBooks | redkitindia",
+          "description": "Browse thousands of digital eBooks across all genres",
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.redkitindia.com" },
+              { "@type": "ListItem", "position": 2, "name": "Books", "item": "https://www.redkitindia.com/books" }
+            ]
+          }
+        }}
+      />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 min-h-[calc(100vh-140px)]">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Desktop Filter Sidebar */}
         <aside className="hidden lg:block lg:col-span-3 bg-white p-5 rounded-xl border border-gray-200 shadow-sm sticky top-24">
@@ -320,7 +343,52 @@ const Books = () => {
           )}
         </section>
       </div>
+
+      {/* Semantic SEO & Information Section for Crawlers & Readers */}
+      <section className="mt-12 bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 space-y-6">
+        <div className="space-y-2">
+          <h2 className="text-xl font-extrabold text-gray-900 font-display">
+            Buy Digital eBooks Online in India – redkitindia
+          </h2>
+          <p className="text-xs sm:text-sm text-gray-600 leading-relaxed">
+            Explore India's largest curated library of instant download digital eBooks. Whether you are passionate about timeless Fiction, modern Software Development, personal mastery with Self-Help, or deep-dive Biographies, redkitindia provides high-resolution PDF and EPUB formats ready for your smartphone, tablet, e-reader, or laptop.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs text-gray-600">
+          <div className="p-4 bg-slate-50 rounded-xl space-y-1.5 border border-gray-100">
+            <h3 className="font-extrabold text-gray-900">⚡ Instant Digital Download</h3>
+            <p>Receive immediate download links upon checkout completion. Zero waiting time.</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-xl space-y-1.5 border border-gray-100">
+            <h3 className="font-extrabold text-gray-900">📱 Universal Compatibility</h3>
+            <p>Download DRM-free PDF &amp; EPUB eBooks compatible with iOS, Android, Kindle &amp; PC.</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-xl space-y-1.5 border border-gray-100">
+            <h3 className="font-extrabold text-gray-900">🔒 Razorpay Secure Payments</h3>
+            <p>Support for UPI, Debit/Credit cards, NetBanking, and mobile wallets with 256-bit encryption.</p>
+          </div>
+          <div className="p-4 bg-slate-50 rounded-xl space-y-1.5 border border-gray-100">
+            <h3 className="font-extrabold text-gray-900">🛡️ 24-Hour Refund Guarantee</h3>
+            <p>Read risk-free with our prompt 24-hour refund protection on every digital purchase.</p>
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-2 text-xs text-gray-500">
+          <span className="font-bold text-gray-700">Popular Categories:</span>
+          {['Fiction', 'Self-Help', 'Technology', 'History', 'Science', 'Biography', 'Non-Fiction'].map((cat) => (
+            <button
+              key={cat}
+              onClick={() => handleCategoryChange(cat)}
+              className="hover:text-black underline underline-offset-2"
+            >
+              {cat} eBooks
+            </button>
+          ))}
+        </div>
+      </section>
     </div>
+    </>
   );
 };
 

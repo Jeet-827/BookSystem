@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, clearAuthError } from '../store/slices/authSlice';
 import { AlertCircle, Lock, Mail } from 'lucide-react';
+import SEOHead from '../components/SEOHead';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -47,7 +48,14 @@ const Login = () => {
   );
 
   return (
-    <div className="min-h-[75vh] flex items-center justify-center px-4 py-10">
+    <>
+      <SEOHead
+        title="Sign In – My Account"
+        description="Sign in to your redkitindia account to access your digital eBook library."
+        canonical="/login"
+        noIndex={true}
+      />
+      <div className="min-h-[75vh] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-sm space-y-6">
         <div className="text-center space-y-1">
           <h1 className="text-2xl font-extrabold text-gray-900 font-display">
@@ -122,13 +130,14 @@ const Login = () => {
         </form>
 
         <p className="text-center text-xs text-gray-500">
-          New to BookMart?{' '}
+          New to redkitindia?{' '}
           <Link to="/register" className="font-bold text-black hover:underline">
             Create an account
           </Link>
         </p>
       </div>
     </div>
+    </>
   );
 };
 

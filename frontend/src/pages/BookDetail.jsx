@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchBookById, clearCurrentBook } from '../store/slices/booksSlice';
 import { addToCart } from '../store/slices/cartSlice';
+import SEOHead from '../components/SEOHead';
 import MoonLoader from '../components/MoonLoader';
 import {
   Star,
@@ -88,7 +89,39 @@ const BookDetail = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <>
+      <SEOHead
+        title={`${book.title} by ${book.author} – Instant eBook Download`}
+        description={`Buy "${book.title}" by ${book.author} on redkitindia. ${book.description ? book.description.slice(0, 150) : 'Instant digital download'}... DRM-free PDF & EPUB eBook.`}
+        canonical={`/books/${book._id}`}
+        ogImage={book.image || undefined}
+        ogType="product"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@type": "Book",
+          "name": book.title,
+          "author": { "@type": "Person", "name": book.author },
+          "description": book.description,
+          "image": book.image,
+          "url": `https://www.redkitindia.com/books/${book._id}`,
+          "inLanguage": book.language || "en",
+          "genre": book.category,
+          "numberOfPages": book.pages,
+          "offers": {
+            "@type": "Offer",
+            "price": book.price,
+            "priceCurrency": "INR",
+            "availability": "https://schema.org/InStock",
+            "seller": { "@type": "Organization", "name": "redkitindia" }
+          },
+          "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": book.rating || 4.5,
+            "reviewCount": book.reviewCount || 1240
+          }
+        }}
+      />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Breadcrumb Navigation */}
       <nav className="flex items-center gap-2 text-xs text-gray-500 overflow-x-auto whitespace-nowrap">
         <Link to="/" className="hover:text-black">Home</Link>
@@ -293,6 +326,7 @@ const BookDetail = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

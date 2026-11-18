@@ -22,6 +22,7 @@ import {
   Lock,
   BookOpen,
 } from 'lucide-react';
+import SEOHead from '../components/SEOHead';
 
 const Cart = () => {
   const dispatch = useDispatch();
@@ -62,29 +63,44 @@ const Cart = () => {
   // Empty Cart Screen
   if (cartItems.length === 0) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4">
-        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-gray-400">
-          <ShoppingBag size={40} />
+      <>
+        <SEOHead
+          title="Shopping Cart"
+          description="View and manage items in your shopping cart on redkitindia."
+          canonical="/cart"
+          noIndex={true}
+        />
+        <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4">
+          <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-gray-400">
+            <ShoppingBag size={40} />
+          </div>
+          <h2 className="text-2xl font-extrabold text-gray-900 font-display">Your Cart is Empty</h2>
+          <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
+            Explore our collection of bestselling eBooks, guides, and masterclasses with instant offline downloads & 24-hour refund protection.
+          </p>
+          <Link
+            to="/books"
+            id="cart-empty-explore-btn"
+            className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 rounded-xl text-xs font-bold hover:bg-gray-800 transition-all shadow-md active:scale-95"
+          >
+            <span>Explore eBook Catalog</span>
+            <ArrowRight size={16} />
+          </Link>
         </div>
-        <h2 className="text-2xl font-extrabold text-gray-900 font-display">Your Cart is Empty</h2>
-        <p className="text-xs text-gray-500 max-w-sm mx-auto leading-relaxed">
-          Explore our collection of bestselling eBooks, guides, and masterclasses with instant offline downloads & 24-hour refund protection.
-        </p>
-        <Link
-          to="/books"
-          id="cart-empty-explore-btn"
-          className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 rounded-xl text-xs font-bold hover:bg-gray-800 transition-all shadow-md active:scale-95"
-        >
-          <span>Explore eBook Catalog</span>
-          <ArrowRight size={16} />
-        </Link>
-      </div>
+      </>
     );
   }
 
   // Active Cart Screen
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <>
+      <SEOHead
+        title="Shopping Cart"
+        description="View and manage items in your shopping cart on redkitindia."
+        canonical="/cart"
+        noIndex={true}
+      />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-200">
         <div>
@@ -262,6 +278,7 @@ const Cart = () => {
         </aside>
       </div>
     </div>
+    </>
   );
 };
 

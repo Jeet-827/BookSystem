@@ -5,6 +5,7 @@ import { fetchFeaturedBooks, fetchBestsellers, setFilter } from '../store/slices
 import api from '../api/axios';
 import BookCard from '../components/BookCard';
 import MoonLoader from '../components/MoonLoader';
+import SEOHead from '../components/SEOHead';
 import {
   ArrowRight,
   Flame,
@@ -111,7 +112,46 @@ const Home = () => {
   const categoryList = useMemo(() => CATEGORIES, []);
 
   return (
-    <div className="space-y-6 md:space-y-10">
+    <>
+      <SEOHead
+        title={null}
+        description="redkitindia — India's premier online digital bookstore. Instant PDF & EPUB eBook downloads, DRM-free offline reading, 10,000+ titles, 24-hour refund guarantee."
+        canonical="/"
+        ogType="website"
+        structuredData={{
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "WebSite",
+              "@id": "https://www.redkitindia.com/#website",
+              "url": "https://www.redkitindia.com",
+              "name": "redkitindia",
+              "description": "India's premier online digital bookstore",
+              "inLanguage": "en-IN",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": {
+                  "@type": "EntryPoint",
+                  "urlTemplate": "https://www.redkitindia.com/books?search={search_term_string}"
+                },
+                "query-input": "required name=search_term_string"
+              }
+            },
+            {
+              "@type": "Organization",
+              "@id": "https://www.redkitindia.com/#organization",
+              "name": "redkitindia",
+              "url": "https://www.redkitindia.com",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://www.redkitindia.com/og-image.jpg"
+              },
+              "sameAs": []
+            }
+          ]
+        }}
+      />
+      <div className="space-y-6 md:space-y-10">
       {/* Category Strip - Horizontal Scroll */}
       <nav className="bg-white border-b border-gray-200 py-3 shadow-sm sticky top-16 md:top-20 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -466,8 +506,60 @@ const Home = () => {
             ))}
           </div>
         </section>
+        {/* Internal Navigation & Category Hub for Crawlers & Shoppers */}
+        <section className="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 font-display">
+                Explore Digital eBook Categories
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Download DRM-free eBooks across all genres instantly to read offline on any device.
+              </p>
+            </div>
+            <Link
+              to="/books"
+              className="text-xs font-bold text-black hover:underline flex items-center gap-1 self-start sm:self-auto"
+            >
+              <span>View Full Catalog</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 text-xs">
+            {[
+              { name: 'Fiction & Literature', query: 'Fiction', desc: 'Classics, novels, and contemporary storytelling' },
+              { name: 'Self-Help & Mindset', query: 'Self-Help', desc: 'Productivity, habits, and personal transformation' },
+              { name: 'Technology & Coding', query: 'Technology', desc: 'Software engineering, cloud, AI, and developer guides' },
+              { name: 'History & Biographies', query: 'History', desc: 'World history, civilizations, and remarkable lives' },
+              { name: 'Science & Nature', query: 'Science', desc: 'Physics, cosmology, biology, and scientific thought' },
+              { name: 'Biography & Memoirs', query: 'Biography', desc: 'Inspirational journeys of world leaders and innovators' },
+              { name: 'Non-Fiction & Essays', query: 'Non-Fiction', desc: 'Philosophy, economics, society, and ideas' },
+              { name: 'All Digital eBooks', query: 'All', desc: 'Browse the entire 10,000+ title catalog' },
+            ].map((item) => (
+              <Link
+                key={item.name}
+                to={item.query === 'All' ? '/books' : `/books?category=${item.query}`}
+                className="group p-3.5 bg-slate-50 hover:bg-black hover:text-white rounded-xl border border-gray-200 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <h3 className="font-extrabold text-gray-900 group-hover:text-white transition-colors">
+                    {item.name}
+                  </h3>
+                  <p className="text-[11px] text-gray-500 group-hover:text-gray-300 mt-1 leading-snug">
+                    {item.desc}
+                  </p>
+                </div>
+                <span className="text-[10px] font-bold text-blue-600 group-hover:text-amber-300 mt-3 inline-flex items-center gap-1">
+                  <span>Browse eBooks</span> &rarr;
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
       </main>
     </div>
+    </>
   );
 };
 

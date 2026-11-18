@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /books
+Allow: /books/
+
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /admin
+Disallow: /login
+Disallow: /register
+
+Sitemap: https://www.redkitindia.com/sitemap.xml

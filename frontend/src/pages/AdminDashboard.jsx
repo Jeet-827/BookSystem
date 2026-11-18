@@ -13,6 +13,7 @@ import AdminOrders from '../components/admin/AdminOrders';
 import AdminLogin from '../components/admin/AdminLogin';
 import ChangePasswordModal from '../components/admin/ChangePasswordModal';
 import MoonLoader from '../components/MoonLoader';
+import SEOHead from '../components/SEOHead';
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
@@ -237,7 +238,14 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="bg-[#0b0c0e] min-h-screen text-white font-sans flex flex-col">
+    <>
+      <SEOHead
+        title="Admin Portal"
+        description="redkitindia Administrator Portal."
+        canonical="/admin"
+        noIndex={true}
+      />
+      <div className="bg-[#0b0c0e] min-h-screen text-white font-sans flex flex-col">
       <AdminHeader
         adminUser={user}
         onLogout={handleLogout}
@@ -343,6 +351,7 @@ const AdminDashboard = () => {
         onClose={() => setIsChangePasswordOpen(false)}
       />
     </div>
+    </>
   );
 };
 

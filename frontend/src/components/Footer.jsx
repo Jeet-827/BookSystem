@@ -85,7 +85,8 @@ const Footer = memo(() => {
             <ul className="space-y-2 text-xs text-gray-400">
               <li><Link to="/" className="hover:text-white transition-colors">Home</Link></li>
               <li><Link to="/books" className="hover:text-white transition-colors">Browse Digital Catalog</Link></li>
-              <li><Link to="/cart" className="hover:text-white transition-colors">Cart</Link></li>
+              <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
+              <li><Link to="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
               <li><Link to="/orders" className="hover:text-white transition-colors">My Digital Library</Link></li>
             </ul>
           </div>
@@ -98,8 +99,9 @@ const Footer = memo(() => {
             <ul className="space-y-2 text-xs text-gray-400">
               <li><Link to="/orders" className="hover:text-white transition-colors">Instant eBook Access</Link></li>
               <li><Link to="/orders" className="hover:text-white transition-colors">24-Hour Refunds</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link></li>
               <li><span className="text-gray-500">Offline Reading Compatible</span></li>
-              <li><span className="text-gray-500">Razorpay Encrypted</span></li>
             </ul>
           </div>
         </div>

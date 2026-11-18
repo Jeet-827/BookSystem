@@ -28,6 +28,7 @@ import {
   Zap,
   X,
 } from 'lucide-react';
+import SEOHead from '../components/SEOHead';
 
 const Checkout = () => {
   const dispatch = useDispatch();
@@ -411,7 +412,14 @@ const Checkout = () => {
 
   // =========== CHECKOUT PAYMENT SCREEN ===========
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+    <>
+      <SEOHead
+        title="Checkout – Secure Payment"
+        description="Complete your secure payment on redkitindia for instant digital eBook download."
+        canonical="/checkout"
+        noIndex={true}
+      />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
       {/* Payment Processing Modal */}
       {showWarningModal && (
         <div
@@ -728,6 +736,7 @@ const Checkout = () => {
         </section>
       </div>
     </div>
+    </>
   );
 };
 

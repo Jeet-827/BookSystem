@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { registerUser, clearAuthError } from '../store/slices/authSlice';
 import { AlertCircle, Lock, Mail, User, ShieldCheck } from 'lucide-react';
 import { validateGenuineEmail } from '../utils/emailValidator';
+import SEOHead from '../components/SEOHead';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -73,16 +74,23 @@ const Register = () => {
   );
 
   return (
-    <div className="min-h-[75vh] flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-sm space-y-6">
-        <div className="text-center space-y-1">
-          <h1 className="text-2xl font-extrabold text-gray-900 font-display">
-            Create Account
-          </h1>
-          <p className="text-xs text-gray-500">
-            Join BookMart for orders & instant digital book access
-          </p>
-        </div>
+    <>
+      <SEOHead
+        title="Create Account"
+        description="Create a free redkitindia account for instant digital eBook access."
+        canonical="/register"
+        noIndex={true}
+      />
+      <div className="min-h-[75vh] flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-md bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="text-center space-y-1">
+            <h1 className="text-2xl font-extrabold text-gray-900 font-display">
+              Create Account
+            </h1>
+            <p className="text-xs text-gray-500">
+              Join redkitindia for orders &amp; instant digital book access
+            </p>
+          </div>
 
         {(localError || error) && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-lg flex items-center gap-2 font-medium">
@@ -192,6 +200,7 @@ const Register = () => {
         </p>
       </div>
     </div>
+    </>
   );
 };
 

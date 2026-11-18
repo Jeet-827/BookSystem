@@ -1,0 +1,5 @@
+OG Image Placeholder
+====================
+Place a 1200x630 PNG or JPG image here named: og-image.jpg
+Recommended: redkitindia logo on dark background, 1200x630px
+This image is used as the default Open Graph / Twitter Card social preview.

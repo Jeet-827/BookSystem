@@ -28,6 +28,7 @@ import {
   ExternalLink,
   Info,
 } from 'lucide-react';
+import SEOHead from '../components/SEOHead';
 
 const Orders = () => {
   const dispatch = useDispatch();
@@ -146,7 +147,14 @@ const Orders = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <>
+      <SEOHead
+        title="My Digital Library & Orders"
+        description="Access your purchased eBooks and download links on redkitindia."
+        canonical="/orders"
+        noIndex={true}
+      />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-200">
         <div>
@@ -624,6 +632,7 @@ const Orders = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 
