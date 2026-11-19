@@ -109,7 +109,7 @@ const Footer = memo(() => {
         {/* Bottom Bar */}
         <div className="pt-6 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-2">
           <p>© {new Date().getFullYear()} redkitindia, Inc. Instant digital downloads.</p>
-          <p>Secure Razorpay Checkout • Google Drive Cloud Downloads • ImageKit CDN</p>
+          <p>redkitindia@gmail.com</p>
         </div>
       </div>
     </footer>
