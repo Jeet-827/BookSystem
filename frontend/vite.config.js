@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'react-vendor': ['react', 'react-dom', 'react-router-dom', 'react-helmet-async'],
             'redux-vendor': ['@reduxjs/toolkit', 'react-redux'],
             'icons-vendor': ['lucide-react'],
             'network-vendor': ['axios'],
