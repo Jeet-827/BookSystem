@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23000'><path d='M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z'/><path d='M6 6h10'/><path d='M6 10h10'/></svg>" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
+    <meta name="theme-color" content="#000000" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="redkitindia - Online Digital eBook Platform. Instant PDF & EPUB downloads upon checkout, DRM-free offline reading, and 24-hour refund guarantee." />
     <title>redkitindia | Instant Digital eBook Platform - Online Downloads</title>
@@ -13,22 +15,60 @@
     <!-- Open Graph fallback (react-helmet-async will override per-page) -->
     <meta property="og:site_name" content="redkitindia" />
     <meta property="og:locale" content="en_IN" />
-    <meta property="og:image" content="https://www.redkitindia.com/og-image.jpg" />
+    <meta property="og:image" content="https://www.redkitindia.com/logo.png" />
     <!-- Twitter Card fallback -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@redkitindia" />
     <!-- Canonical fallback -->
     <link rel="canonical" href="https://www.redkitindia.com/" />
-    <!-- JSON-LD WebSite Schema -->
+    <!-- JSON-LD: WebSite + Organization with Logo (shows logo in Google Search) -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "redkitindia",
-      "url": "https://www.redkitindia.com",
-      "description": "India's premier online digital bookstore. Instant PDF & EPUB eBook downloads.",
-      "inLanguage": "en-IN"
-    }
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "redkitindia",
+        "alternateName": "Redkit India",
+        "url": "https://www.redkitindia.com",
+        "description": "India's premier online digital bookstore. Instant PDF & EPUB eBook downloads.",
+        "inLanguage": "en-IN",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://www.redkitindia.com/books?search={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "redkitindia",
+        "alternateName": "Redkit India",
+        "url": "https://www.redkitindia.com",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.redkitindia.com/logo.png",
+          "width": 512,
+          "height": 512,
+          "caption": "redkitindia logo"
+        },
+        "image": "https://www.redkitindia.com/logo.png",
+        "description": "India's premier online digital bookstore offering instant PDF & EPUB eBook downloads.",
+        "foundingDate": "2024",
+        "areaServed": "IN",
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "email": "support@redkitindia.com",
+          "contactType": "customer support",
+          "availableLanguage": "English"
+        },
+        "sameAs": [
+          "https://www.redkitindia.com"
+        ]
+      }
+    ]
     </script>
     <!-- Google Fonts: Preconnect + Non-blocking load -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

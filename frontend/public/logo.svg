@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="#000000"/>
+  <!-- Book icon -->
+  <path d="M120 100 C120 100 120 380 120 400 C120 420 136 440 160 440 L400 440 L400 420 L160 420 C148 420 140 412 140 400 C140 388 148 380 160 380 L400 380 L400 80 L160 80 C136 80 120 100 120 100Z" fill="#ffffff"/>
+  <path d="M140 400 C140 388 148 380 160 380 L400 380" stroke="#ffffff" stroke-width="4" fill="none"/>
+  <!-- Lines on book -->
+  <line x1="175" y1="140" x2="360" y2="140" stroke="#000000" stroke-width="18" stroke-linecap="round"/>
+  <line x1="175" y1="185" x2="360" y2="185" stroke="#000000" stroke-width="18" stroke-linecap="round"/>
+  <line x1="175" y1="230" x2="300" y2="230" stroke="#000000" stroke-width="18" stroke-linecap="round"/>
+  <!-- R letter accent -->
+  <text x="175" y="340" font-family="Arial Black, sans-serif" font-weight="900" font-size="80" fill="#000000">rk</text>
+</svg>
