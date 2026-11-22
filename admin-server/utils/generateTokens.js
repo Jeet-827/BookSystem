@@ -23,12 +23,13 @@ export const generateRefreshToken = (id, role = 'admin') => {
 };
 
 export const setCookies = (res, accessToken, refreshToken) => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const sameSite = isProd ? 'none' : 'lax';
+  const secure = isProd;
 
   res.cookie('adminAccessToken', accessToken, {
     httpOnly: true,
-    secure: isProd,
+    secure,
     sameSite,
     path: '/',
     maxAge: 15 * 60 * 1000,
@@ -36,7 +37,7 @@ export const setCookies = (res, accessToken, refreshToken) => {
 
   res.cookie('adminRefreshToken', refreshToken, {
     httpOnly: true,
-    secure: isProd,
+    secure,
     sameSite,
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -44,11 +45,12 @@ export const setCookies = (res, accessToken, refreshToken) => {
 };
 
 export const clearCookies = (res) => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const sameSite = isProd ? 'none' : 'lax';
+  const secure = isProd;
   const options = {
     httpOnly: true,
-    secure: isProd,
+    secure,
     sameSite,
     path: '/',
   };

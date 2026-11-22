@@ -59,6 +59,8 @@ export const register = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: 'Account created successfully',
+    accessToken,
+    refreshToken,
     user: formatUser(user),
   });
 });
@@ -133,6 +135,8 @@ export const login = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'Login successful',
+    accessToken,
+    refreshToken,
     user: formatUser(user),
   });
 });

@@ -41,13 +41,16 @@ export const generateRefreshToken = (id) => {
  * @param {string} refreshToken
  */
 export const setCookies = (res, accessToken, refreshToken) => {
-  const isProd = process.env.NODE_ENV === 'production';
+  // Always use sameSite: 'none' and secure: true for cross-origin production deployments
+  // (e.g. frontend on redkitindia.com/Vercel and backend on onrender.com)
+  const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const sameSite = isProd ? 'none' : 'lax';
+  const secure = isProd;
 
   // Access Token Cookie (15 mins)
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: isProd,
+    secure,
     sameSite,
     path: '/',
     maxAge: 15 * 60 * 1000, // 15 mins
@@ -56,7 +59,7 @@ export const setCookies = (res, accessToken, refreshToken) => {
   // Refresh Token Cookie (7 days)
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: isProd,
+    secure,
     sameSite,
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -65,7 +68,7 @@ export const setCookies = (res, accessToken, refreshToken) => {
   // Admin Refresh Token Cookie for cross-route compatibility
   res.cookie('adminRefreshToken', refreshToken, {
     httpOnly: true,
-    secure: isProd,
+    secure,
     sameSite,
     path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -77,11 +80,12 @@ export const setCookies = (res, accessToken, refreshToken) => {
  * @param {Object} res - Express Response object
  */
 export const clearCookies = (res) => {
-  const isProd = process.env.NODE_ENV === 'production';
+  const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
   const sameSite = isProd ? 'none' : 'lax';
+  const secure = isProd;
   const options = {
     httpOnly: true,
-    secure: isProd,
+    secure,
     sameSite,
     path: '/',
   };
