@@ -74,6 +74,8 @@ const buildAllowedOrigins = () => {
     'http://127.0.0.1:5174',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'https://www.redkitindia.com',
+    'https://redkitindia.com',
   ]);
 
   // Add explicitly configured production origins
@@ -99,16 +101,20 @@ app.use(
         return callback(null, true);
       }
 
-      // In development mode allow localhost on any port
-      if (process.env.NODE_ENV !== 'production') {
-        try {
-          const { hostname } = new URL(origin);
+      try {
+        const { hostname } = new URL(origin);
+        // Allow redkitindia.com and all subdomains (including www)
+        if (hostname === 'redkitindia.com' || hostname.endsWith('.redkitindia.com')) {
+          return callback(null, true);
+        }
+        // In development mode allow localhost on any port
+        if (process.env.NODE_ENV !== 'production') {
           if (hostname === 'localhost' || hostname === '127.0.0.1') {
             return callback(null, true);
           }
-        } catch {
-          // ignore malformed origin
         }
+      } catch {
+        // ignore malformed origin
       }
 
       return callback(new Error(`CORS: Origin ${origin} is not allowed`));
