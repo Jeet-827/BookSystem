@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import api from '../api/api';
+import api, { setAccessToken, setFallbackRefreshToken } from '../api/api';
 import { loginUser, logoutUser } from '../store/slices/authSlice';
 import AdminHeader from '../components/admin/AdminHeader';
 import AdminSidebar from '../components/admin/AdminSidebar';
@@ -104,17 +104,38 @@ const AdminDashboard = () => {
     setRefreshing(false);
   };
 
-  // Login Handler
+  // Login Handler: authenticate directly against dedicated Admin Server
   const handleAdminLogin = async (creds) => {
     setLoginError('');
     try {
-      const result = await dispatch(loginUser(creds)).unwrap();
-      if (result.user?.role !== 'admin' && result.user?.role !== 'superadmin') {
-        setLoginError('Access denied: You do not have administrator privileges.');
-        dispatch(logoutUser());
+      // 1. Authenticate with dedicated Admin Server on port 5001 / booksystem-1
+      const res = await api.post('/admin/auth/login', creds);
+      if (res.data?.success) {
+        if (res.data.accessToken) {
+          setAccessToken(res.data.accessToken);
+        }
+        if (res.data.refreshToken) {
+          setFallbackRefreshToken(res.data.refreshToken);
+        }
+        // Sync Redux auth state
+        dispatch({
+          type: 'auth/login/fulfilled',
+          payload: res.data,
+        });
+        return;
       }
-    } catch (err) {
-      setLoginError(err || 'Invalid email or password');
+      throw new Error(res.data?.message || 'Admin authentication failed');
+    } catch (adminErr) {
+      // Fallback: try customer backend login
+      try {
+        const result = await dispatch(loginUser(creds)).unwrap();
+        if (result.user?.role !== 'admin' && result.user?.role !== 'superadmin') {
+          setLoginError('Access denied: You do not have administrator privileges.');
+          dispatch(logoutUser());
+        }
+      } catch (err) {
+        setLoginError(adminErr.response?.data?.message || err || 'Invalid email or password');
+      }
     }
   };
 
