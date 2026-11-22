@@ -59,8 +59,8 @@ export const createRazorpayOrder = asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, message: 'Cart items cannot be empty' });
   }
 
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = (process.env.RAZORPAY_KEY_ID || '').trim();
+  const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
 
   if (!keyId || !keySecret) {
     return res.status(503).json({
@@ -105,8 +105,13 @@ export const createRazorpayOrder = asyncHandler(async (req, res) => {
     rzpData = await rzpRes.json();
 
     if (!rzpRes.ok || !rzpData.id) {
-      logger.error(`Razorpay order creation failed: ${JSON.stringify(rzpData)}`);
-      return res.status(502).json({ success: false, message: 'Failed to create payment order. Please try again.' });
+      logger.error(`Razorpay order creation failed: status=${rzpRes.status} response=${JSON.stringify(rzpData)}`);
+      const errorMsg = rzpData?.error?.description || 'Failed to create payment order. Please try again.';
+      return res.status(502).json({
+        success: false,
+        message: errorMsg,
+        details: process.env.NODE_ENV !== 'production' ? rzpData : undefined,
+      });
     }
   } catch (err) {
     logger.error(`Razorpay API error: ${err.message}`);
