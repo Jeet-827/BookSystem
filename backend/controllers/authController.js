@@ -13,6 +13,7 @@ import {
 import { formatUser, sanitizeEmail } from '../utils/helpers.js';
 import { validateGenuineEmail } from '../utils/emailValidator.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { sendPasswordResetEmail } from '../utils/emailService.js';
 
 // Helper to hash token string before storing in DB
 const hashToken = (token) => crypto.createHash('sha256').update(String(token)).digest('hex');
@@ -293,5 +294,96 @@ export const changePassword = asyncHandler(async (req, res) => {
   res.json({
     success: true,
     message: 'Password changed successfully',
+  });
+});
+
+// @desc    Request password reset code
+// @route   POST /api/auth/forgot-password
+// @access  Public
+export const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ success: false, message: 'Please provide an email address' });
+  }
+
+  const safeEmail = sanitizeEmail(email);
+  let account = await User.findOne({ email: safeEmail });
+  if (!account) {
+    account = await Admin.findOne({ email: safeEmail });
+  }
+
+  // Generate 6-digit numeric OTP code
+  const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const tokenHash = crypto.createHash('sha256').update(resetCode).digest('hex');
+
+  if (account) {
+    account.resetPasswordToken = tokenHash;
+    account.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+    await account.save();
+
+    // Send verification email via Nodemailer
+    await sendPasswordResetEmail(account.email, resetCode, account.name || 'User');
+  }
+
+  res.json({
+    success: true,
+    message: 'If an account exists with that email, a verification code has been sent to your email address.',
+    // In dev / preview environments, code is also returned for instant testing
+    ...(process.env.NODE_ENV !== 'production' || !process.env.SMTP_USER ? { resetCode } : {}),
+  });
+});
+
+// @desc    Reset password using reset code
+// @route   POST /api/auth/reset-password
+// @access  Public
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { email, resetCode, newPassword } = req.body;
+
+  if (!email || !resetCode || !newPassword) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email, reset code, and new password are required',
+    });
+  }
+
+  if (String(newPassword).length < 6) {
+    return res.status(400).json({
+      success: false,
+      message: 'New password must be at least 6 characters long',
+    });
+  }
+
+  const safeEmail = sanitizeEmail(email);
+  const tokenHash = crypto.createHash('sha256').update(String(resetCode).trim()).digest('hex');
+
+  let account = await User.findOne({
+    email: safeEmail,
+    resetPasswordToken: tokenHash,
+    resetPasswordExpires: { $gt: new Date() },
+  });
+
+  if (!account) {
+    account = await Admin.findOne({
+      email: safeEmail,
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+  }
+
+  if (!account) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid or expired password reset code',
+    });
+  }
+
+  account.password = String(newPassword);
+  account.resetPasswordToken = undefined;
+  account.resetPasswordExpires = undefined;
+  await account.save();
+
+  res.json({
+    success: true,
+    message: 'Password has been reset successfully. You can now log in with your new password.',
   });
 });
