@@ -27,6 +27,9 @@ const BookDetail = () => {
   );
 
   useEffect(() => {
+    try {
+      window.scrollTo(0, 0);
+    } catch {}
     if (id) {
       dispatch(fetchBookById(id));
     }
