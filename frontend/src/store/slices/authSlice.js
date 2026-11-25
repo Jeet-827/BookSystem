@@ -52,11 +52,25 @@ export const loginUser = createAsyncThunk(
 export const checkAuthSession = createAsyncThunk(
   'auth/checkAuthSession',
   async (_, { rejectWithValue }) => {
-    try {
-      const rf = getFallbackRefreshToken();
-      const payload = rf ? { refreshToken: rf } : {};
-      const headers = rf ? { 'x-refresh-token': rf } : {};
+    const rf = getFallbackRefreshToken();
+    const payload = rf ? { refreshToken: rf } : {};
+    const headers = rf ? { 'x-refresh-token': rf } : {};
+    const isAdminPath =
+      typeof window !== 'undefined' && window.location.pathname.startsWith('/admin');
 
+    // On /admin routes, prioritize Admin Server session check first
+    if (isAdminPath) {
+      try {
+        const adminRes = await api.post('/admin/auth/refresh', payload, { headers });
+        if (adminRes.data.accessToken) setAccessToken(adminRes.data.accessToken);
+        if (adminRes.data.refreshToken) setFallbackRefreshToken(adminRes.data.refreshToken);
+        return adminRes.data;
+      } catch {
+        // Fall through to customer refresh in case admin logged in via unified login
+      }
+    }
+
+    try {
       const response = await api.post('/auth/refresh', payload, { headers });
       if (response.data.accessToken) {
         setAccessToken(response.data.accessToken);
@@ -66,6 +80,17 @@ export const checkAuthSession = createAsyncThunk(
       }
       return response.data;
     } catch (err) {
+      // Fallback: check admin server refresh if not already tried
+      if (!isAdminPath) {
+        try {
+          const adminRes = await api.post('/admin/auth/refresh', payload, { headers });
+          if (adminRes.data.accessToken) setAccessToken(adminRes.data.accessToken);
+          if (adminRes.data.refreshToken) setFallbackRefreshToken(adminRes.data.refreshToken);
+          return adminRes.data;
+        } catch {
+          // Ignore fallback failure
+        }
+      }
       setAccessToken(null);
       setFallbackRefreshToken(null);
       if (err.response?.status === 401) {
@@ -79,12 +104,17 @@ export const checkAuthSession = createAsyncThunk(
 // Async Thunk: Logout (Destroys HTTP-Only cookies on server + wipes tokens)
 export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState }) => {
     try {
       const rf = getFallbackRefreshToken();
       const payload = rf ? { refreshToken: rf } : {};
       const headers = rf ? { 'x-refresh-token': rf } : {};
-      await api.post('/auth/logout', payload, { headers });
+      const role = getState()?.auth?.user?.role;
+      const requests = [api.post('/auth/logout', payload, { headers })];
+      if (role === 'admin' || role === 'superadmin') {
+        requests.push(api.post('/admin/auth/logout', payload, { headers }));
+      }
+      await Promise.allSettled(requests);
     } catch (err) {
       // Continue cleanup regardless of server response
     } finally {

@@ -146,9 +146,10 @@ export const getAdminBooks = async (req, res) => {
 
     const query = {};
 
-    // 1. Search Query
+    // 1. Search Query (escaped safely against ReDoS / invalid regex errors)
     if (search && typeof search === 'string' && search.trim() !== '') {
-      const regex = { $regex: search.trim(), $options: 'i' };
+      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = { $regex: escaped, $options: 'i' };
       query.$or = [{ title: regex }, { author: regex }, { publisher: regex }, { isbn: regex }];
     }
 
@@ -269,9 +270,15 @@ export const createAdminBook = async (req, res) => {
   }
 
   const numericPrice = Number(price);
+  if (isNaN(numericPrice) || numericPrice < 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Price must be a valid non-negative number.',
+    });
+  }
   const numericOriginalPrice =
     originalPrice !== undefined && originalPrice !== '' && !isNaN(Number(originalPrice))
-      ? Number(originalPrice)
+      ? Math.max(0, Number(originalPrice))
       : numericPrice;
 
   const defaultDesc = `${String(title).trim()} by ${String(author).trim()}. Premium digital eBook edition available for instant download on redkitindia.`;
@@ -333,7 +340,42 @@ export const updateAdminBook = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Book not found' });
     }
 
-    const updated = await Book.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true, runValidators: true });
+    const allowedFields = [
+      'title',
+      'author',
+      'description',
+      'price',
+      'originalPrice',
+      'image',
+      'downloadUrl',
+      'fileFormat',
+      'fileSize',
+      'category',
+      'isbn',
+      'language',
+      'pages',
+      'publisher',
+      'publishedYear',
+      'isFeatured',
+      'isBestseller',
+      'rating',
+    ];
+    const updates = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    if (updates.price !== undefined && (isNaN(Number(updates.price)) || Number(updates.price) < 0)) {
+      return res.status(400).json({ success: false, message: 'Price must be a valid non-negative number' });
+    }
+
+    const updated = await Book.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
 
     await logAction({
       admin: req.admin,

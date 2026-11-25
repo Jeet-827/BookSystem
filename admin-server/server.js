@@ -61,21 +61,20 @@ app.use(
       try {
         const { hostname } = new URL(origin);
         if (
-          hostname === 'localhost' ||
-          hostname === '127.0.0.1' ||
+          hostname === 'redkitindia.com' ||
+          hostname.endsWith('.redkitindia.com') ||
           hostname.endsWith('.vercel.app') ||
           hostname === 'vercel.app' ||
           hostname.endsWith('.onrender.com') ||
-          hostname === 'onrender.com'
+          hostname === 'onrender.com' ||
+          (process.env.NODE_ENV !== 'production' && (hostname === 'localhost' || hostname === '127.0.0.1'))
         ) {
           return callback(null, true);
         }
       } catch {
-        if (origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com')) {
-          return callback(null, true);
-        }
+        // ignore malformed origin
       }
-      return callback(null, true);
+      return callback(new Error(`CORS: Origin ${origin} is not allowed`));
     },
     credentials: true,
   })
@@ -215,23 +214,22 @@ let server;
 if (!isTesting) {
   connectDB().then(async () => {
     try {
-      const email = process.env.ADMIN_DEFAULT_EMAIL || 'admin@bookmart.com';
-      const password = process.env.ADMIN_DEFAULT_PASSWORD || 'Admin@2025Secure';
-      let admin = await Admin.findOne({ email });
-      if (!admin) {
-        await Admin.create({
-          name: 'System Administrator',
-          email,
-          password,
-          role: 'admin',
-          isActive: true,
-        });
-        logger.info(`[Admin Server] Default administrator created in Admin schema (${email}).`);
-      } else {
-        admin.password = password;
-        admin.isActive = true;
-        await admin.save();
-        logger.info(`[Admin Server] Administrator account synchronized with updated password (${email}).`);
+      const adminCount = await Admin.countDocuments();
+      if (adminCount === 0) {
+        const email = process.env.ADMIN_DEFAULT_EMAIL;
+        const password = process.env.ADMIN_DEFAULT_PASSWORD;
+        if (!email || !password) {
+          logger.warn('[Admin Server] No admin account exists and ADMIN_DEFAULT_EMAIL / ADMIN_DEFAULT_PASSWORD are not set.');
+        } else {
+          await Admin.create({
+            name: 'System Administrator',
+            email,
+            password,
+            role: 'admin',
+            isActive: true,
+          });
+          logger.info(`[Admin Server] Default administrator created in Admin schema (${email}).`);
+        }
       }
 
       // Auto-seed sample digital orders if database has no orders yet (powers sales revenue & orders tab)

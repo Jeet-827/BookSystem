@@ -65,7 +65,7 @@ export const getAdminServerBase = () => {
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ) {
     if (!adminUrl || adminUrl.includes('onrender.com')) {
-      return 'http://localhost:5000/api';
+      return 'http://localhost:5001/api';
     }
   }
   const target = adminUrl || 'https://booksystem-1.onrender.com/';
@@ -99,6 +99,47 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let customerRefreshPromise = null;
+let adminRefreshPromise = null;
+
+const refreshAccessToken = (isAdminReq) => {
+  const activePromise = isAdminReq ? adminRefreshPromise : customerRefreshPromise;
+  if (activePromise) return activePromise;
+
+  const refreshUrl = isAdminReq
+    ? `${getAdminServerBase()}/admin/auth/refresh`
+    : `${getApiBaseURL()}/auth/refresh`;
+  const payload = inMemoryRefreshToken ? { refreshToken: inMemoryRefreshToken } : {};
+  const headers = inMemoryRefreshToken ? { 'x-refresh-token': inMemoryRefreshToken } : {};
+
+  const promise = axios
+    .post(refreshUrl, payload, { headers, withCredentials: true })
+    .then((res) => {
+      if (res.data?.accessToken) {
+        setAccessToken(res.data.accessToken);
+        if (res.data.refreshToken) {
+          setFallbackRefreshToken(res.data.refreshToken);
+        }
+        return res.data.accessToken;
+      }
+      throw new Error('No access token returned during refresh');
+    })
+    .finally(() => {
+      if (isAdminReq) {
+        adminRefreshPromise = null;
+      } else {
+        customerRefreshPromise = null;
+      }
+    });
+
+  if (isAdminReq) {
+    adminRefreshPromise = promise;
+  } else {
+    customerRefreshPromise = promise;
+  }
+  return promise;
+};
+
 // Response interceptor: Silent Refresh & Error Handling
 api.interceptors.response.use(
   (response) => {
@@ -115,29 +156,17 @@ api.interceptors.response.use(
     // If 401 Unauthorized and not already retrying
     if (
       error.response?.status === 401 &&
+      request &&
       !request._retry &&
       !request.url?.includes('/auth/login') &&
       !request.url?.includes('/auth/refresh')
     ) {
       request._retry = true;
       try {
-        const baseURL = getApiBaseURL();
-        const payload = inMemoryRefreshToken ? { refreshToken: inMemoryRefreshToken } : {};
-        const headers = inMemoryRefreshToken ? { 'x-refresh-token': inMemoryRefreshToken } : {};
-
-        const res = await axios.post(`${baseURL}/auth/refresh`, payload, {
-          headers,
-          withCredentials: true,
-        });
-
-        if (res.data?.accessToken) {
-          setAccessToken(res.data.accessToken);
-          if (res.data.refreshToken) {
-            setFallbackRefreshToken(res.data.refreshToken);
-          }
-          request.headers.Authorization = `Bearer ${res.data.accessToken}`;
-          return api(request);
-        }
+        const isAdminReq = request.url?.startsWith('/admin');
+        const newAccessToken = await refreshAccessToken(isAdminReq);
+        request.headers.Authorization = `Bearer ${newAccessToken}`;
+        return api(request);
       } catch (refreshErr) {
         setAccessToken(null);
         setFallbackRefreshToken(null);

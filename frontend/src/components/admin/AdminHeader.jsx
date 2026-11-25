@@ -3,22 +3,22 @@ import { LogOut, RefreshCw, Shield, KeyRound, User as UserIcon } from 'lucide-re
 
 const AdminHeader = ({ adminUser, onLogout, onRefresh, refreshing, onChangePassword }) => {
   return (
-    <header className="bg-[#13161c] border-b border-gray-800 sticky top-0 z-30 px-4 sm:px-6 py-3 flex items-center justify-between text-white">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-gradient-to-tr from-amber-500 to-amber-300 text-black rounded-lg font-bold flex items-center justify-center">
-          <Shield size={20} />
+    <header className="bg-[#13161c] border-b border-gray-800 sticky top-0 z-30 px-3 sm:px-6 py-3 flex items-center justify-between gap-2 text-white">
+      <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div className="p-2 bg-gradient-to-tr from-amber-500 to-amber-300 text-black rounded-lg font-bold flex items-center justify-center flex-shrink-0">
+          <Shield size={18} />
         </div>
-        <div>
-          <h1 className="text-base sm:text-lg font-extrabold font-display leading-tight">
+        <div className="min-w-0">
+          <h1 className="text-sm sm:text-lg font-extrabold font-display leading-tight truncate">
             redkitindia Admin Portal
           </h1>
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[11px] text-gray-400 truncate hidden xs:block">
             System Control &amp; Digital Catalog
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
         <button
           onClick={onRefresh}
           disabled={refreshing}

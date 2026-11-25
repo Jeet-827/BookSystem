@@ -94,6 +94,10 @@ const booksSlice = createSlice({
   reducers: {
     setFilter: (state, action) => {
       state.filters = { ...state.filters, ...action.payload };
+      state.currentPage = 1;
+    },
+    setPage: (state, action) => {
+      state.currentPage = Math.max(1, Number(action.payload) || 1);
     },
     resetFilters: (state) => {
       state.filters = {
@@ -103,6 +107,7 @@ const booksSlice = createSlice({
         maxPrice: '',
         sort: 'featured',
       };
+      state.currentPage = 1;
     },
     clearCurrentBook: (state) => {
       state.currentBook = null;
@@ -154,5 +159,5 @@ const booksSlice = createSlice({
   },
 });
 
-export const { setFilter, resetFilters, clearCurrentBook } = booksSlice.actions;
+export const { setFilter, setPage, resetFilters, clearCurrentBook } = booksSlice.actions;
 export default booksSlice.reducer;

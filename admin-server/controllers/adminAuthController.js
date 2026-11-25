@@ -101,7 +101,11 @@ export const adminLogin = async (req, res) => {
 // @access  Public (Requires adminRefreshToken cookie or body)
 export const adminRefreshToken = async (req, res) => {
   try {
-    const token = req.cookies?.adminRefreshToken || req.cookies?.refreshToken || req.body?.refreshToken;
+    const token =
+      req.cookies?.adminRefreshToken ||
+      req.cookies?.refreshToken ||
+      req.body?.refreshToken ||
+      req.headers['x-refresh-token'];
 
     if (!token) {
       return res.status(401).json({

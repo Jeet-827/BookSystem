@@ -95,7 +95,11 @@ describe('Jest-Style Security, Refresh Token, Helmet & Search Tests (18 Tests)',
     assert.deepEqual(res.body.results, []);
   });
 
-  test('12. GET /api/books/preview with special regex characters escapes safely', async () => {
+  test('12. GET /api/books/preview with special regex characters escapes safely', async (t) => {
+    if (!dbConnected) {
+      t.skip('Skipping DB-dependent preview search test: MongoDB not reachable');
+      return;
+    }
     const res = await request(app).get('/api/books/preview?q=' + encodeURIComponent('.*+?^${}()|[]\\'));
     assert.equal(res.status, 200);
     assert.equal(res.body.success, true);

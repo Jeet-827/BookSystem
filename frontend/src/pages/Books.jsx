@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchBooks, setFilter, resetFilters } from '../store/slices/booksSlice';
+import { fetchBooks, setFilter, setPage, resetFilters } from '../store/slices/booksSlice';
 import BookCard from '../components/BookCard';
 import MoonLoader from '../components/MoonLoader';
-import { SlidersHorizontal, RotateCcw, X, Filter } from 'lucide-react';
+import { SlidersHorizontal, RotateCcw, X, Filter, AlertCircle, RefreshCw } from 'lucide-react';
 import SEOHead from '../components/SEOHead';
 
 const CATEGORIES = [
@@ -108,7 +108,7 @@ const Books = () => {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const [isDebouncing, setIsDebouncing] = useState(false);
   const dispatch = useDispatch();
-  const { books, totalBooks, currentPage, loading, filters } = useSelector(
+  const { books, totalBooks, currentPage, totalPages, loading, error, filters } = useSelector(
     (state) => state.books
   );
 
@@ -319,6 +319,22 @@ const Books = () => {
             <div className="bg-white rounded-xl border border-gray-200 py-24 flex flex-col items-center justify-center flex-1 min-h-[480px]">
               <MoonLoader size={48} color="#000000" text="Filtering books..." />
             </div>
+          ) : error ? (
+            <div className="bg-white rounded-xl border border-red-200 p-8 sm:p-12 text-center space-y-4 flex-1 flex flex-col items-center justify-center min-h-[480px]">
+              <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+                <AlertCircle size={24} />
+              </div>
+              <h3 className="text-lg font-extrabold text-gray-900">Unable to load books</h3>
+              <p className="text-xs text-red-600 max-w-sm mx-auto">{error}</p>
+              <button
+                type="button"
+                onClick={() => dispatch(fetchBooks({ ...filters, page: currentPage || 1 }))}
+                className="inline-flex items-center gap-2 bg-black text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-gray-800"
+              >
+                <RefreshCw size={14} />
+                <span>Retry</span>
+              </button>
+            </div>
           ) : books.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-200 p-12 text-center space-y-4 flex-1 flex flex-col items-center justify-center min-h-[480px]">
               <div className="text-4xl">📚</div>
@@ -335,10 +351,38 @@ const Books = () => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6 min-h-[520px] content-start">
-              {books.map((book) => (
-                <BookCard key={book._id} book={book} />
-              ))}
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6 min-h-[520px] content-start">
+                {books.map((book) => (
+                  <BookCard key={book._id} book={book} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-gray-200">
+                  <span className="text-xs font-bold text-gray-600">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={currentPage <= 1}
+                      onClick={() => dispatch(setPage(currentPage - 1))}
+                      className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-xs font-bold text-gray-800 disabled:opacity-40 hover:bg-gray-50"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => dispatch(setPage(currentPage + 1))}
+                      className="px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-xs font-bold text-gray-800 disabled:opacity-40 hover:bg-gray-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>

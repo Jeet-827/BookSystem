@@ -1,11 +1,35 @@
 import React from 'react';
-import { Activity, ShieldAlert, CheckCircle, Clock } from 'lucide-react';
+import { Activity, Clock, AlertCircle, RefreshCw } from 'lucide-react';
 
-const AdminActivity = ({ logs, loading }) => {
+const AdminActivity = ({ logs, loading, error, onRetry }) => {
   if (loading && logs.length === 0) {
     return (
-      <div className="py-16 text-center text-gray-400 text-sm font-bold animate-pulse">
+      <div className="py-16 text-center text-gray-400 text-sm font-bold animate-pulse bg-[#13161c] rounded-2xl border border-gray-800">
         Loading system activity audit trail...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-12 px-6 text-center bg-red-500/5 rounded-2xl border border-red-500/30 space-y-4">
+        <div className="w-10 h-10 rounded-full bg-red-500/15 text-red-400 flex items-center justify-center mx-auto">
+          <AlertCircle size={20} />
+        </div>
+        <div className="space-y-1 max-w-md mx-auto">
+          <h3 className="text-sm font-extrabold text-white">Failed to Load Activity Logs</h3>
+          <p className="text-xs text-red-300">{error}</p>
+        </div>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200 text-xs font-bold transition-all"
+          >
+            <RefreshCw size={14} />
+            <span>Retry</span>
+          </button>
+        )}
       </div>
     );
   }

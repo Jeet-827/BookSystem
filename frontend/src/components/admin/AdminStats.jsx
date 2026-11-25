@@ -2,7 +2,21 @@ import React from 'react';
 import { BookOpen, IndianRupee, Sparkles, Users } from 'lucide-react';
 
 const AdminStats = ({ stats }) => {
-  if (!stats) return null;
+  if (!stats) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="bg-[#13161c] border border-gray-800 p-4 sm:p-5 rounded-2xl h-28 animate-pulse flex flex-col justify-between"
+          >
+            <div className="h-3 w-24 bg-white/10 rounded" />
+            <div className="h-6 w-16 bg-white/10 rounded" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   const cards = [
     {

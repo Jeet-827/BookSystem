@@ -11,8 +11,8 @@ const AdminSidebar = ({ activeTab, setActiveTab, onOpenCreateModal, onSeedCatalo
   ];
 
   return (
-    <aside className="w-full md:w-64 bg-[#13161c] border-b md:border-b-0 md:border-r border-gray-800 p-4 space-y-6 flex-shrink-0">
-      <div className="space-y-2">
+    <aside className="w-full md:w-64 bg-[#13161c] border-b md:border-b-0 md:border-r border-gray-800 p-4 space-y-4 md:space-y-6 flex-shrink-0">
+      <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
         <button
           onClick={onOpenCreateModal}
           className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-400 text-black font-extrabold py-2.5 px-4 rounded-xl text-xs sm:text-sm hover:brightness-110 active:scale-95 transition-all shadow-md"
@@ -30,8 +30,8 @@ const AdminSidebar = ({ activeTab, setActiveTab, onOpenCreateModal, onSeedCatalo
         </button>
       </div>
 
-      <nav className="space-y-1">
-        <p className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 px-3 mb-2">
+      <nav className="flex md:flex-col gap-1.5 overflow-x-auto md:overflow-x-visible pb-1 md:pb-0">
+        <p className="hidden md:block text-[10px] font-extrabold uppercase tracking-wider text-gray-500 px-3 mb-1">
           Navigation
         </p>
         {navItems.map((item) => {
@@ -41,13 +41,13 @@ const AdminSidebar = ({ activeTab, setActiveTab, onOpenCreateModal, onSeedCatalo
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+              className={`flex-shrink-0 md:w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
                 isActive
                   ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <Icon size={18} />
+              <Icon size={17} />
               <span>{item.label}</span>
             </button>
           );

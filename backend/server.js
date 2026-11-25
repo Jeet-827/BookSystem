@@ -193,17 +193,9 @@ app.use('/api/orders', checkoutLimiter);
 // Customer API Routes
 // ─────────────────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
-app.use('/api/books', cache.middleware(60000), bookRoutes);
+app.use('/api/books', cache.middleware(15000), bookRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/posters', cache.middleware(120000), posterRoutes);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Customer API Routes
-// ─────────────────────────────────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
-app.use('/api/books', cache.middleware(60000), bookRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/posters', cache.middleware(120000), posterRoutes);
+app.use('/api/posters', cache.middleware(60000), posterRoutes);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Strict Separation: Admin operations are hosted exclusively on the dedicated

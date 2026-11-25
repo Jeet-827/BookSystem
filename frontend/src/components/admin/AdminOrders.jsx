@@ -39,6 +39,7 @@ const AdminOrders = ({ initialView = 'orders' }) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [ordersError, setOrdersError] = useState('');
   const [metrics, setMetrics] = useState({
     totalCollectedAmount: 0,
     paidCount: 0,
@@ -64,6 +65,7 @@ const AdminOrders = ({ initialView = 'orders' }) => {
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
+    setOrdersError('');
     try {
       const params = {
         page,
@@ -79,9 +81,13 @@ const AdminOrders = ({ initialView = 'orders' }) => {
         if (res.data.metrics) {
           setMetrics(res.data.metrics);
         }
+      } else {
+        setOrdersError(res.data.message || 'Failed to load orders.');
       }
     } catch (err) {
-      console.error('Failed to fetch admin orders:', err);
+      setOrdersError(
+        err.response?.data?.message || err.message || 'Unable to fetch orders from server.'
+      );
     } finally {
       setLoading(false);
     }
@@ -369,6 +375,18 @@ const AdminOrders = ({ initialView = 'orders' }) => {
         {loading && filteredOrders.length === 0 ? (
           <div className="py-20 flex justify-center">
             <MoonLoader size={40} color="#10b981" text="Loading payments & orders..." />
+          </div>
+        ) : ordersError ? (
+          <div className="py-12 px-6 text-center space-y-3">
+            <p className="text-sm font-bold text-red-400">{ordersError}</p>
+            <button
+              type="button"
+              onClick={fetchOrders}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200 text-xs font-bold transition-all"
+            >
+              <RefreshCw size={14} />
+              <span>Retry</span>
+            </button>
           </div>
         ) : filteredOrders.length === 0 ? (
           <div className="py-16 text-center text-gray-400 space-y-2">

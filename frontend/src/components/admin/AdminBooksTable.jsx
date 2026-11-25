@@ -1,9 +1,14 @@
 import React from 'react';
-import { Edit2, Trash2, Star, Sparkles, Flame, Check, X } from 'lucide-react';
+import { Edit2, Trash2, Sparkles, Flame, AlertCircle, RefreshCw, BookOpen, PlusCircle } from 'lucide-react';
 
 const AdminBooksTable = ({
   books,
   loading,
+  error,
+  onRetry,
+  hasActiveFilters,
+  onClearFilters,
+  onAddBook,
   selectedBookIds,
   onSelectAll,
   onSelectBook,
@@ -14,16 +19,73 @@ const AdminBooksTable = ({
 }) => {
   if (loading && books.length === 0) {
     return (
-      <div className="py-16 text-center text-gray-400 text-sm font-bold animate-pulse">
+      <div className="py-16 text-center text-gray-400 text-sm font-bold animate-pulse bg-[#13161c] rounded-2xl border border-gray-800">
         Loading inventory...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="py-12 px-6 text-center bg-red-500/5 rounded-2xl border border-red-500/30 space-y-4">
+        <div className="w-12 h-12 rounded-full bg-red-500/15 text-red-400 flex items-center justify-center mx-auto">
+          <AlertCircle size={24} />
+        </div>
+        <div className="space-y-1 max-w-md mx-auto">
+          <h3 className="text-sm font-extrabold text-white">Failed to Load Books</h3>
+          <p className="text-xs text-red-300 leading-relaxed">{error}</p>
+        </div>
+        {onRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200 text-xs font-bold transition-all"
+          >
+            <RefreshCw size={14} />
+            <span>Retry</span>
+          </button>
+        )}
       </div>
     );
   }
 
   if (!books || books.length === 0) {
     return (
-      <div className="py-16 text-center text-gray-500 text-sm font-bold bg-[#13161c] rounded-2xl border border-gray-800">
-        No books found matching your filters.
+      <div className="py-14 px-6 text-center bg-[#13161c] rounded-2xl border border-gray-800 space-y-3">
+        <div className="w-12 h-12 rounded-full bg-white/5 text-gray-400 flex items-center justify-center mx-auto">
+          <BookOpen size={22} />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-sm font-extrabold text-white">
+            {hasActiveFilters ? 'No books match your filters' : 'No books in catalog yet'}
+          </h3>
+          <p className="text-xs text-gray-500">
+            {hasActiveFilters
+              ? 'Try clearing your search query or switching category.'
+              : 'Add your first digital eBook to start selling.'}
+          </p>
+        </div>
+        <div className="flex items-center justify-center gap-2 pt-1">
+          {hasActiveFilters && onClearFilters && (
+            <button
+              type="button"
+              onClick={onClearFilters}
+              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-xs font-bold transition-all"
+            >
+              Clear Filters
+            </button>
+          )}
+          {onAddBook && (
+            <button
+              type="button"
+              onClick={onAddBook}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-extrabold transition-all"
+            >
+              <PlusCircle size={14} />
+              <span>Add New Book</span>
+            </button>
+          )}
+        </div>
       </div>
     );
   }

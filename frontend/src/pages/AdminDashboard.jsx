@@ -29,12 +29,18 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [booksError, setBooksError] = useState('');
+  const [statsError, setStatsError] = useState('');
+  const [logsError, setLogsError] = useState('');
+  const [actionError, setActionError] = useState('');
 
   // Filters & Pagination
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalBooks, setTotalBooks] = useState(0);
   const [selectedBookIds, setSelectedBookIds] = useState([]);
 
   // Modals
@@ -43,49 +49,81 @@ const AdminDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
+  // Debounce search input & reset page on filter change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const handleCategoryChange = useCallback((newCategory) => {
+    setCategory(newCategory);
+    setPage(1);
+  }, []);
+
   // Fetch Dashboard Overview Stats
   const fetchStats = useCallback(async () => {
+    setStatsError('');
     try {
       const res = await api.get('/admin/dashboard/stats');
-      if (res.data.success) {
+      if (res.data?.success) {
         setStats(res.data.stats);
+      } else {
+        setStatsError(res.data?.message || 'Failed to load dashboard statistics.');
       }
     } catch (err) {
-      console.error('Failed to fetch stats:', err);
+      setStatsError(
+        err.response?.data?.message || err.message || 'Unable to load dashboard statistics.'
+      );
     }
   }, []);
 
   // Fetch Books
   const fetchBooksData = useCallback(async () => {
     setLoading(true);
+    setBooksError('');
     try {
       const params = {
         page,
         limit: 10,
-        search,
+        search: debouncedSearch.trim() || undefined,
         category: category !== 'All' ? category : undefined,
       };
       const res = await api.get('/admin/books', { params });
-      if (res.data.success) {
+      if (res.data?.success) {
         setBooks(res.data.books || []);
-        setTotalPages(res.data.pages || 1);
+        setTotalPages(res.data.totalPages || res.data.pages || 1);
+        setTotalBooks(res.data.totalBooks ?? (res.data.books?.length || 0));
+      } else {
+        setBooksError(res.data?.message || 'Failed to fetch books from server.');
       }
     } catch (err) {
-      console.error('Failed to fetch admin books:', err);
+      setBooksError(
+        err.response?.data?.message ||
+          err.message ||
+          'Failed to fetch books. Please check server connection and try again.'
+      );
     } finally {
       setLoading(false);
     }
-  }, [page, search, category]);
+  }, [page, debouncedSearch, category]);
 
   // Fetch Logs
   const fetchActivityLogs = useCallback(async () => {
+    setLogsError('');
     try {
       const res = await api.get('/admin/dashboard/activity');
-      if (res.data.success) {
+      if (res.data?.success) {
         setLogs(res.data.logs || []);
+      } else {
+        setLogsError(res.data?.message || 'Failed to load activity logs.');
       }
     } catch (err) {
-      console.error('Failed to fetch logs:', err);
+      setLogsError(
+        err.response?.data?.message || err.message || 'Unable to load activity logs.'
+      );
     }
   }, []);
 
@@ -194,20 +232,22 @@ const AdminDashboard = () => {
   };
 
   const handleToggleFeatured = async (id) => {
+    setActionError('');
     try {
       await api.patch(`/admin/books/${id}/toggle-featured`);
       fetchBooksData();
     } catch (err) {
-      console.error(err);
+      setActionError(err.response?.data?.message || 'Failed to update featured status.');
     }
   };
 
   const handleToggleBestseller = async (id) => {
+    setActionError('');
     try {
       await api.patch(`/admin/books/${id}/toggle-bestseller`);
       fetchBooksData();
     } catch (err) {
-      console.error(err);
+      setActionError(err.response?.data?.message || 'Failed to update bestseller status.');
     }
   };
 
@@ -217,12 +257,17 @@ const AdminDashboard = () => {
         'WARNING: This will reset all current books and re-seed the sample catalog. Proceed?'
       )
     ) {
+      setActionError('');
       try {
-        await api.post('/admin/books/seed');
+        await api.post(
+          '/admin/books/seed',
+          { confirm: true },
+          { headers: { 'x-confirm-destructive': 'true' } }
+        );
         fetchBooksData();
         fetchStats();
       } catch (err) {
-        alert(err.response?.data?.message || 'Error seeding database');
+        setActionError(err.response?.data?.message || 'Error seeding database');
       }
     }
   };
@@ -266,7 +311,7 @@ const AdminDashboard = () => {
         canonical="/admin"
         noIndex={true}
       />
-      <div className="bg-[#0b0c0e] min-h-screen text-white font-sans flex flex-col">
+      <div className="bg-[#0b0c0e] min-h-screen text-white font-sans flex flex-col overflow-x-hidden">
       <AdminHeader
         adminUser={user}
         onLogout={handleLogout}
@@ -275,7 +320,7 @@ const AdminDashboard = () => {
         onChangePassword={() => setIsChangePasswordOpen(true)}
       />
 
-      <div className="flex-1 flex flex-col md:flex-row">
+      <div className="flex-1 flex flex-col md:flex-row min-w-0">
         <AdminSidebar
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -286,7 +331,33 @@ const AdminDashboard = () => {
           onSeedCatalog={handleSeedCatalog}
         />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto w-full">
+          {statsError && (
+            <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center justify-between gap-3 text-xs text-red-300">
+              <span>{statsError}</span>
+              <button
+                type="button"
+                onClick={fetchStats}
+                className="px-3 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200 font-bold flex-shrink-0"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {actionError && (
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-300">
+              <span>{actionError}</span>
+              <button
+                type="button"
+                onClick={() => setActionError('')}
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 font-bold flex-shrink-0"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           <AdminStats stats={stats} />
 
           {activeTab === 'books' && (
@@ -295,7 +366,7 @@ const AdminDashboard = () => {
                 search={search}
                 setSearch={setSearch}
                 category={category}
-                setCategory={setCategory}
+                setCategory={handleCategoryChange}
                 selectedCount={selectedBookIds.length}
                 onBulkDelete={handleBulkDelete}
               />
@@ -303,6 +374,18 @@ const AdminDashboard = () => {
               <AdminBooksTable
                 books={books}
                 loading={loading}
+                error={booksError}
+                onRetry={fetchBooksData}
+                hasActiveFilters={Boolean(search.trim() || category !== 'All')}
+                onClearFilters={() => {
+                  setSearch('');
+                  setCategory('All');
+                  setPage(1);
+                }}
+                onAddBook={() => {
+                  setEditingBook(null);
+                  setIsFormOpen(true);
+                }}
                 selectedBookIds={selectedBookIds}
                 onSelectAll={handleSelectAll}
                 onSelectBook={handleSelectBook}
@@ -317,9 +400,9 @@ const AdminDashboard = () => {
 
               {/* Pagination controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-xs text-gray-500 font-bold">
-                    Page {page} of {totalPages}
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                  <span className="text-xs text-gray-400 font-bold">
+                    Page {page} of {totalPages} ({totalBooks} total)
                   </span>
                   <div className="flex gap-2">
                     <button
@@ -346,13 +429,15 @@ const AdminDashboard = () => {
 
           {activeTab === 'payments' && <AdminOrders initialView="payments" />}
 
-          {activeTab === 'activity' && <AdminActivity logs={logs} loading={loading} />}
+          {activeTab === 'activity' && (
+            <AdminActivity logs={logs} loading={loading} error={logsError} onRetry={fetchActivityLogs} />
+          )}
 
           {activeTab === 'system' && (
             <div className="p-6 bg-[#13161c] border border-gray-800 rounded-2xl space-y-4">
               <h3 className="font-extrabold text-sm text-white">System Diagnostics</h3>
               <p className="text-xs text-gray-400">
-                Single unified backend operational on port 5000 serving both customer storefront and administrator APIs.
+                Dedicated Admin API Server operational (port 5001 locally / booksystem-1 in production) with isolated admin authentication, MongoDB Atlas persistence, ImageKit cover uploads, and Google Drive digital file storage.
               </p>
             </div>
           )}
