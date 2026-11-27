@@ -9,7 +9,6 @@ import {
   Search,
   ShoppingBag,
   User,
-  BookOpen,
   LogOut,
   Compass,
   Menu,
@@ -152,9 +151,11 @@ const Navbar = memo(() => {
         <div className="flex items-center justify-between h-16 md:h-20 gap-3 md:gap-6">
           {/* Brand Logo - redkitindia */}
           <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
-            <div className="p-2 bg-white text-black rounded-lg transition-transform group-hover:scale-105">
-              <BookOpen size={22} strokeWidth={2.5} />
-            </div>
+            <img
+              src="/logo.png"
+              alt="redkitindia logo"
+              className="w-9 h-9 rounded-lg object-contain bg-white p-0.5 transition-transform group-hover:scale-105"
+            />
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-xl md:text-2xl tracking-tight text-white font-display">
                 redkitindia

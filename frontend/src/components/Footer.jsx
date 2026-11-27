@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, ShieldCheck, Download, RotateCcw, Headphones, Zap } from 'lucide-react';
+import { ShieldCheck, Download, RotateCcw, Headphones } from 'lucide-react';
 
 const Footer = memo(() => {
   return (
@@ -54,9 +54,11 @@ const Footer = memo(() => {
           {/* Brand Info */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="p-1.5 bg-white text-black rounded">
-                <BookOpen size={20} strokeWidth={2.5} />
-              </div>
+              <img
+                src="/logo.png"
+                alt="redkitindia logo"
+                className="w-8 h-8 rounded object-contain bg-white p-0.5"
+              />
               <h3 className="text-xl font-extrabold font-display">redkitindia</h3>
             </div>
             <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
