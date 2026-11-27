@@ -16,6 +16,8 @@ const CATEGORIES = [
   'Science',
   'Biography',
   'Non-Fiction',
+  'Business',
+  'finance'
 ];
 
 // Memoized Filter Sidebar Component
