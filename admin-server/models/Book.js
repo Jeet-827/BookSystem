@@ -57,6 +57,8 @@ const bookSchema = new mongoose.Schema(
         'Children',
         'Mystery',
         'Romance',
+        'Business',
+        'finance'
       ],
     },
     rating: {
