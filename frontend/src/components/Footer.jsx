@@ -57,7 +57,7 @@ const Footer = memo(() => {
               <img
                 src="/logo.png"
                 alt="redkitindia logo"
-                className="w-8 h-8 rounded object-contain bg-white p-0.5"
+                className="w-8 h-8 rounded-lg object-contain"
               />
               <h3 className="text-xl font-extrabold font-display">redkitindia</h3>
             </div>

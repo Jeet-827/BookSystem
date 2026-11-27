@@ -154,7 +154,7 @@ const Navbar = memo(() => {
             <img
               src="/logo.png"
               alt="redkitindia logo"
-              className="w-9 h-9 rounded-lg object-contain bg-white p-0.5 transition-transform group-hover:scale-105"
+              className="w-9 h-9 rounded-lg object-contain transition-transform group-hover:scale-105"
             />
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-xl md:text-2xl tracking-tight text-white font-display">

@@ -2,7 +2,15 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "cleanUrls": true,
   "routes": [
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(logo\\.png|logo\\.svg|favicon\\.ico|favicon-.*\\.png|apple-touch-icon.*\\.png|og-image\\.jpg|robots\\.txt|sitemap\\.xml)",
+      "dest": "/$1"
+    },
     {
       "src": "/about",
       "dest": "/about/index.html"

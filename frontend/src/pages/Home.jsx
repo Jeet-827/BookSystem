@@ -144,7 +144,9 @@ const Home = () => {
               "url": "https://www.redkitindia.com",
               "logo": {
                 "@type": "ImageObject",
-                "url": "https://www.redkitindia.com/og-image.jpg"
+                "url": "https://www.redkitindia.com/logo.png",
+                "width": 512,
+                "height": 512
               },
               "sameAs": []
             }
