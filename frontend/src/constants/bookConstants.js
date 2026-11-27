@@ -7,6 +7,8 @@ export const BOOK_CATEGORIES = [
   'Science',
   'Biography',
   'Non-Fiction',
+  'Business',
+  'finance'
 ];
 
 export const SORT_OPTIONS = [
