@@ -32,9 +32,7 @@ const PageSuspenseFallback = () => (
 function App() {
   const dispatch = useDispatch();
 
-  // useLayoutEffect runs synchronously before the browser paints,
-  // ensuring the refresh-token → access-token exchange starts
-  // before any child component renders, preventing auth flicker.
+  
   useLayoutEffect(() => {
     dispatch(checkAuthSession());
   }, [dispatch]);
